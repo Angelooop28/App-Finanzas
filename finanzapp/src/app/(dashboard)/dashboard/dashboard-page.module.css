@@ -1,0 +1,521 @@
+.dashPage {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* Summary KPI Cards */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.summaryCard {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.summaryCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.summaryCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.kpiIconWrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpiIncome {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-400);
+}
+
+.kpiExpenses {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-400);
+}
+
+.kpiDebt {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-400);
+}
+
+.kpiSurplus {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-400);
+}
+
+.kpiDeficit {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-400);
+}
+
+.summaryCardLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summaryCardValue {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.summaryCardValue.positive {
+  color: var(--success-400);
+}
+
+.summaryCardValue.negative {
+  color: var(--danger-400);
+}
+
+.summaryCardValue.warning {
+  color: var(--warning-400);
+}
+
+.summaryCardSubtext {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.4rem;
+}
+
+/* Health Score Card */
+.healthCard {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-2xl);
+  padding: 1.5rem;
+  margin-bottom: var(--space-6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.healthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.healthBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
+.healthTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.healthDescription {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+.healthScoreBox {
+  display: flex;
+  align-items: baseline;
+  padding: 0.75rem 1.25rem;
+  background: rgba(10, 16, 30, 0.6);
+  border: 2px solid;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.healthScoreNumber {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.healthScoreMax {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  margin-left: 3px;
+}
+
+/* Budget Distribution */
+.budgetSection {
+  background: rgba(10, 16, 30, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.budgetTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.budgetHint {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.budgetBar {
+  display: flex;
+  height: 10px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.budgetSegment {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.budgetLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Content Grid */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-6);
+}
+
+.sectionCard {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Payment List */
+.paymentList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.paymentItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.paymentItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.paymentIconBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.debtTypeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.paymentInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.paymentName {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.paymentDueDate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.paymentAmount {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.paymentAmountBadge {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--danger-400);
+  background: rgba(239, 68, 68, 0.08);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+/* Strategy Banner */
+.strategyBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+}
+
+.strategyIconBox {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.strategyTitle {
+  font-size: 0.825rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.strategyDesc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.debtSummaryRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.debtSummaryItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.debtSummaryLabel {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.debtSummaryValue {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+/* Quick Actions */
+.quickActionLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.quickActionLink:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateX(3px);
+}
+
+.quickActionIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quickActionTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quickActionDesc {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.quickActionArrow {
+  color: var(--text-tertiary);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.quickActionLink:hover .quickActionArrow {
+  color: var(--primary-400);
+  transform: translateX(2px);
+}
+
+.progressPercentBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--success-400);
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.emptyIconBadge {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+}
+
+.emptyIcon {
+  color: var(--primary-400);
+}
+
+.emptyTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.emptyDesc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .healthHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .healthScoreBox {
+    align-self: flex-start;
+  }
+}
