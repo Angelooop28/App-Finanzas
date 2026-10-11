@@ -231,7 +231,7 @@ export default function RecuperarPasswordPage() {
             <form className={styles.authForm} onSubmit={handleVerifyOTP} id="reset-otp-form">
               <div className="input-group" style={{ alignItems: 'center' }}>
                 <label className="input-label">Código de verificación</label>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }} onPaste={handleOtpPaste}>
+                <div style={{ display: 'flex', gap: 'clamp(0.25rem, 1.5vw, 0.5rem)', justifyContent: 'center', width: '100%' }} onPaste={handleOtpPaste}>
                   {otp.map((digit, i) => (
                     <input
                       key={i}
@@ -241,10 +241,10 @@ export default function RecuperarPasswordPage() {
                       maxLength={1}
                       className="input"
                       style={{
-                        width: '3rem',
-                        height: '3.5rem',
+                        width: 'clamp(2.35rem, 10vw, 3rem)',
+                        height: 'clamp(2.85rem, 12vw, 3.5rem)',
                         textAlign: 'center',
-                        fontSize: 'var(--text-2xl)',
+                        fontSize: 'clamp(1.2rem, 5vw, 1.5rem)',
                         fontWeight: 700,
                         fontFamily: 'var(--font-mono)',
                         padding: '0',

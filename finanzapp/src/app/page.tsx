@@ -29,7 +29,7 @@ export default function HomePage() {
           <div className={styles.navLogoBadge} style={{ overflow: 'hidden' }}>
             <img src="/logo.jpg" alt="Fin593 Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <div>
+          <div className={styles.navBrandMeta}>
             <span className={styles.navTitle}>Fin593</span>
             <span className={styles.navCountryBadge}>Ecuador 🇪🇨 (USD)</span>
           </div>
@@ -37,11 +37,12 @@ export default function HomePage() {
 
         <div className={styles.navActions}>
           <ThemeToggle />
-          <Link href="/login" className="btn btn-secondary btn-sm">
-            Iniciar Sesión
+          <Link href="/login" className={`btn btn-secondary btn-sm ${styles.navLoginBtn}`}>
+            <span>Iniciar Sesión</span>
           </Link>
-          <Link href="/registro" className="btn btn-primary btn-sm">
-            <span>Empezar Gratis</span>
+          <Link href="/registro" className={`btn btn-primary btn-sm ${styles.navRegisterBtn}`}>
+            <span className={styles.registerBtnTextFull}>Empezar Gratis</span>
+            <span className={styles.registerBtnTextShort}>Empezar</span>
             <ArrowRight size={15} />
           </Link>
         </div>

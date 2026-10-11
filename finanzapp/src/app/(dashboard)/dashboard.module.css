@@ -368,6 +368,8 @@
 @media (max-width: 1024px) {
   .sidebar {
     transform: translateX(-100%);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .sidebarOpen {
@@ -380,7 +382,7 @@
 
   .mainContent {
     margin-left: 0;
-    padding-bottom: 70px;
+    padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
   }
 
   .menuToggle {
@@ -393,10 +395,30 @@
 
   .topBar {
     padding: 0 1rem;
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   }
 
   .pageContent {
     padding: 1.25rem 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .topBarTitle {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+  }
+
+  .topBarSubtitle {
+    display: none;
+  }
+
+  .currencyBadge {
+    display: none;
   }
 }
 

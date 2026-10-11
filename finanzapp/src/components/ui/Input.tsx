@@ -147,7 +147,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               paddingBottom: '0.65rem',
               paddingLeft: leftPadding,
               paddingRight: rightPadding,
-              fontSize: '0.925rem',
+              fontSize: '1rem',
               lineHeight: '1.4',
               background: 'transparent',
               border: 'none',
