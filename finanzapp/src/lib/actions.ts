@@ -35,10 +35,28 @@ function getCurrentPeriod(): string {
 }
 
 /**
- * Extract the first Zod error message from a safeParse result.
+ * Extract the first Zod error message from a safeParse result and ensure it is in Spanish.
  */
 function getZodError(result: { error: { issues: Array<{ message: string }> } }): string {
-  return result.error.issues[0]?.message ?? 'Datos inválidos';
+  const issue = result.error.issues[0];
+  if (!issue) return 'Datos inválidos';
+  let msg = issue.message;
+
+  if (msg.includes('Too small: expected number to be >=')) {
+    const val = msg.split('>=')[1]?.trim() || '1';
+    return `El valor debe ser mayor o igual a ${val}`;
+  }
+  if (msg.includes('Too small: expected string to have >=')) {
+    return 'El campo no puede estar vacío';
+  }
+  if (msg.includes('Expected number') || msg.includes('received nan')) {
+    return 'Por favor ingresa un número válido';
+  }
+  if (msg.includes('Required')) {
+    return 'Este campo es requerido';
+  }
+
+  return msg;
 }
 
 // =============================================
@@ -424,7 +442,15 @@ export async function addSavingsGoal(data: {
   targetMonths?: number;
 }): Promise<ActionResult> {
   try {
-    const parsed = savingsGoalSchema.safeParse(data);
+    const cleanData = {
+      name: data.name,
+      type: data.type || 'CUSTOM',
+      targetAmount: Number(data.targetAmount),
+      currentAmount: Number(data.currentAmount) > 0 ? Number(data.currentAmount) : 0,
+      monthlyContribution: Number(data.monthlyContribution) > 0 ? Number(data.monthlyContribution) : undefined,
+      targetMonths: Number(data.targetMonths) > 0 ? Number(data.targetMonths) : undefined,
+    };
+    const parsed = savingsGoalSchema.safeParse(cleanData);
     if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();

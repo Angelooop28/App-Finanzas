@@ -72,6 +72,15 @@
   letter-spacing: -0.01em;
 }
 
+.formCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 /* Presets Chips */
 .presetsGroup {
   display: flex;
@@ -168,14 +177,28 @@
   min-width: 0;
 }
 
+.deductionItemTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.deductionLawBadge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary-500);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .deductionItemName {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .deductionItemType {
@@ -184,13 +207,25 @@
   margin-top: 0.15rem;
 }
 
+.deductionItemControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.deductionItemActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .deductionItemAmount {
   font-family: var(--font-mono);
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--danger-600);
   white-space: nowrap;
-  margin-right: 0.5rem;
 }
 
 [data-theme="dark"] .deductionItemAmount {
@@ -372,5 +407,47 @@
 
   .salaryDisplay {
     position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .incomeHeader {
+    padding: 1rem;
+  }
+
+  .formCard {
+    padding: 1.25rem 1rem;
+  }
+
+  .salaryDisplay {
+    padding: 1.25rem 1rem;
+  }
+
+  .deductionItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .deductionItemName {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .deductionItemControls {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--glass-border);
+  }
+
+  .presetsGroup {
+    gap: 0.4rem;
+  }
+
+  .presetChip {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
   }
 }

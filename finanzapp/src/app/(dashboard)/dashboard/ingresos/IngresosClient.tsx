@@ -170,10 +170,10 @@ export default function IngresosClient({ initialGross, initialDeductions }: Prop
           </div>
 
           <div className={styles.formCard}>
-            <div className="flex justify-between items-center mb-4">
+            <div className={styles.formCardHeader}>
               <div className="flex items-center gap-2">
                 <TrendingDown size={18} color="var(--danger-500)" />
-                <h3 className={styles.formTitle} style={{ margin: 0 }}>Deducciones & Retenciones de Rol</h3>
+                <h3 className={styles.formTitle} style={{ margin: 0 }}>Deducciones & Retenciones</h3>
               </div>
               <Button
                 variant="secondary"
@@ -241,10 +241,10 @@ export default function IngresosClient({ initialGross, initialDeductions }: Prop
                 return (
                   <div key={d.id} className={styles.deductionItem} style={{ opacity: d.isActive ? 1 : 0.4 }}>
                     <div className={styles.deductionItemInfo}>
-                      <div className="flex items-center gap-2">
+                      <div className={styles.deductionItemTitleRow}>
                         <span className={styles.deductionItemName}>{d.name}</span>
                         {d.type === 'IESS' && (
-                          <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '9999px', background: 'rgba(37, 99, 235, 0.12)', color: 'var(--primary-500)', fontWeight: 800 }}>
+                          <span className={styles.deductionLawBadge}>
                             Ley Ecuador (9.45%)
                           </span>
                         )}
@@ -254,21 +254,25 @@ export default function IngresosClient({ initialGross, initialDeductions }: Prop
                         {d.isPercentage && d.percentage ? ` · ${d.percentage}% del sueldo bruto` : ' · Monto mensual fijo'}
                       </div>
                     </div>
-                    <div className={styles.deductionItemAmount}>{d.isActive ? `−${fmt(amount)}` : 'Desactivado'}</div>
-                    <button
-                      className={`${styles.deductionToggle} ${d.isActive ? styles.active : ''}`}
-                      onClick={() => handleToggle(d.id)}
-                      aria-label={d.isActive ? 'Desactivar' : 'Activar'}
-                      title={d.isActive ? 'Desactivar deducción' : 'Activar deducción'}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(d.id)}
-                      title="Eliminar deducción"
-                      style={{ padding: '0.35rem', color: 'var(--text-tertiary)' }}
-                      icon={<Trash2 size={15} />}
-                    />
+                    <div className={styles.deductionItemControls}>
+                      <div className={styles.deductionItemAmount}>{d.isActive ? `−${fmt(amount)}` : 'Desactivado'}</div>
+                      <div className={styles.deductionItemActions}>
+                        <button
+                          className={`${styles.deductionToggle} ${d.isActive ? styles.active : ''}`}
+                          onClick={() => handleToggle(d.id)}
+                          aria-label={d.isActive ? 'Desactivar' : 'Activar'}
+                          title={d.isActive ? 'Desactivar deducción' : 'Activar deducción'}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(d.id)}
+                          title="Eliminar deducción"
+                          style={{ padding: '0.35rem', color: 'var(--text-tertiary)' }}
+                          icon={<Trash2 size={15} />}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
               })}

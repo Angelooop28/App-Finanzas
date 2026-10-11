@@ -58,19 +58,19 @@ export default function DashboardLayout({
     : 'US';
 
   const getPageTitle = () => {
-    const routes: Record<string, { title: string; subtitle: string }> = {
-      '/dashboard': { title: 'Centro de Inteligencia Financiera', subtitle: 'Diagnóstico en tiempo real y plan de acción de hoy' },
-      '/dashboard/ingresos': { title: 'Ingresos & Rol de Pagos', subtitle: 'Salario neto, aportes IESS (9.45%) y descuentos' },
-      '/dashboard/deudas': { title: 'Gestión de Obligaciones & Deudas', subtitle: 'Amortización bancaria, SUPA, cooperativas e informales' },
-      '/dashboard/gastos': { title: 'Control Inteligente de Gastos', subtitle: 'Clasificación de costos fijos, variables y análisis de desvíos' },
-      '/dashboard/ia': { title: 'Fin593 AI — Asesor Financiero', subtitle: 'Diagnóstico explicable, simulador de crédito y recomendaciones' },
-      '/dashboard/ahorro': { title: 'Plan de Ahorro & Metas', subtitle: 'Fondo de emergencia (3 meses) y metas a futuro' },
-      '/dashboard/consultar': { title: '¿Puedo comprarlo?', subtitle: 'Asesor de impacto sobre excedente y flujo libre' },
-      '/dashboard/reportes': { title: 'Centro de Reportes & PDF', subtitle: 'Descarga de balances ejecutivos, flujo de caja y CSV' },
-      '/dashboard/notificaciones': { title: 'Centro de Alertas & Notificaciones', subtitle: 'Vencimientos críticos, desvíos y seguridad' },
-      '/dashboard/perfil': { title: 'Mi Perfil Financiero', subtitle: 'Parámetros de nómina, corte y seguridad de cuenta' },
+    const routes: Record<string, { title: string; subtitle: string; shortTitle: string }> = {
+      '/dashboard': { title: 'Centro de Inteligencia Financiera', shortTitle: 'Dashboard', subtitle: 'Diagnóstico en tiempo real y plan de acción de hoy' },
+      '/dashboard/ingresos': { title: 'Ingresos & Rol de Pagos', shortTitle: 'Ingresos', subtitle: 'Salario neto, aportes IESS (9.45%) y descuentos' },
+      '/dashboard/deudas': { title: 'Gestión de Obligaciones & Deudas', shortTitle: 'Deudas', subtitle: 'Amortización bancaria, SUPA, cooperativas e informales' },
+      '/dashboard/gastos': { title: 'Control Inteligente de Gastos', shortTitle: 'Gastos', subtitle: 'Clasificación de costos fijos, variables y análisis de desvíos' },
+      '/dashboard/ia': { title: 'Fin593 AI — Asesor Financiero', shortTitle: 'Fin593 AI', subtitle: 'Diagnóstico explicable, simulador de crédito y recomendaciones' },
+      '/dashboard/ahorro': { title: 'Plan de Ahorro & Metas', shortTitle: 'Ahorro', subtitle: 'Fondo de emergencia (3 meses) y metas a futuro' },
+      '/dashboard/consultar': { title: '¿Puedo comprarlo?', shortTitle: 'Consultar', subtitle: 'Asesor de impacto sobre excedente y flujo libre' },
+      '/dashboard/reportes': { title: 'Centro de Reportes & PDF', shortTitle: 'Reportes', subtitle: 'Descarga de balances ejecutivos, flujo de caja y CSV' },
+      '/dashboard/notificaciones': { title: 'Centro de Alertas & Notificaciones', shortTitle: 'Alertas', subtitle: 'Vencimientos críticos, desvíos y seguridad' },
+      '/dashboard/perfil': { title: 'Mi Perfil Financiero', shortTitle: 'Mi Perfil', subtitle: 'Parámetros de nómina, corte y seguridad de cuenta' },
     };
-    return routes[pathname] || { title: 'Fin593', subtitle: 'Finanzas Inteligentes para Ecuador' };
+    return routes[pathname] || { title: 'Fin593', shortTitle: 'Fin593', subtitle: 'Finanzas Inteligentes para Ecuador' };
   };
 
   const pageInfo = getPageTitle();
@@ -191,7 +191,7 @@ export default function DashboardLayout({
       <main className={styles.mainContent}>
         {/* Top Header Bar */}
         <header className={styles.topBar}>
-          <div className="flex items-center gap-3">
+          <div className={styles.topBarLeft}>
             <button
               className={styles.menuToggle}
               onClick={() => setSidebarOpen(true)}
@@ -199,8 +199,11 @@ export default function DashboardLayout({
             >
               <Menu size={22} />
             </button>
-            <div>
-              <h1 className={styles.topBarTitle}>{pageInfo.title}</h1>
+            <div className={styles.topBarTitleWrapper}>
+              <h1 className={styles.topBarTitle}>
+                <span className={styles.titleDesktop}>{pageInfo.title}</span>
+                <span className={styles.titleMobile}>{pageInfo.shortTitle}</span>
+              </h1>
               <p className={styles.topBarSubtitle}>{pageInfo.subtitle}</p>
             </div>
           </div>
@@ -211,7 +214,7 @@ export default function DashboardLayout({
               <span>USD ($)</span>
             </div>
             <ThemeToggle />
-            <Link href="/dashboard/perfil" className={styles.topBarProfile}>
+            <Link href="/dashboard/perfil" className={styles.topBarProfile} aria-label="Mi Perfil">
               <div className={styles.userAvatarSm}>{initials}</div>
             </Link>
           </div>

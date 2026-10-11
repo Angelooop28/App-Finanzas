@@ -290,6 +290,27 @@
   border-radius: var(--radius-md);
 }
 
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.topBarTitleWrapper {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.titleDesktop {
+  display: inline;
+}
+
+.titleMobile {
+  display: none;
+}
+
 .topBarTitle {
   font-size: 1.15rem;
   font-weight: 800;
@@ -300,12 +321,22 @@
 .topBarSubtitle {
   font-size: 0.75rem;
   color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topBarActions {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.topBarProfile {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .currencyBadge {
@@ -382,7 +413,7 @@
 
   .mainContent {
     margin-left: 0;
-    padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
 
   .menuToggle {
@@ -405,12 +436,30 @@
 }
 
 @media (max-width: 640px) {
+  .titleDesktop {
+    display: none;
+  }
+
+  .titleMobile {
+    display: inline;
+  }
+
+  .topBar {
+    padding: 0 0.85rem;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .topBarLeft {
+    gap: 0.5rem;
+  }
+
   .topBarTitle {
-    font-size: 0.95rem;
+    font-size: 1.05rem;
+    font-weight: 800;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 170px;
+    max-width: none;
   }
 
   .topBarSubtitle {
@@ -419,6 +468,11 @@
 
   .currencyBadge {
     display: none;
+  }
+
+  .topBarActions {
+    gap: 0.45rem;
+    flex-shrink: 0;
   }
 }
 

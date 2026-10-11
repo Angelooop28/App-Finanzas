@@ -91,8 +91,14 @@ export const debtSchema = z.object({
   monthlyPayment: z.number().positive('La cuota mensual debe ser mayor a 0'),
   interestRate: z.number().min(0, 'La tasa de interés no puede ser negativa').max(100).default(0),
   nextDueDate: z.string().optional(), // ISO date string
-  remainingInstallments: z.number().int().min(0).optional(),
-  manualPriority: z.number().int().min(1).max(10).optional(),
+  remainingInstallments: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().int('Las cuotas deben ser un número entero').min(0, 'Las cuotas no pueden ser negativas').optional()
+  ),
+  manualPriority: z.preprocess(
+    (v) => (v === 0 || v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().int().min(1, 'La prioridad debe ser entre 1 y 10').max(10, 'La prioridad máxima es 10').optional()
+  ),
 });
 
 // ---- Gastos ----
@@ -110,7 +116,10 @@ export const expenseSchema = z.object({
   amount: z.number().positive('El monto debe ser mayor a 0'),
   date: z.string(), // ISO date string
   isRecurring: z.boolean().default(false),
-  recurringDay: z.number().int().min(1).max(31).optional(),
+  recurringDay: z.preprocess(
+    (v) => (v === 0 || v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().int().min(1, 'El día debe ser entre 1 y 31').max(31, 'El día debe ser entre 1 y 31').optional()
+  ),
 });
 
 // ---- Ahorro ----
@@ -119,10 +128,19 @@ export const savingsGoalSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100),
   type: z.enum(['EMERGENCY_FUND', 'CUSTOM']).default('CUSTOM'),
   targetAmount: z.number().positive('La meta debe ser mayor a 0'),
-  currentAmount: z.number().min(0).default(0),
-  monthlyContribution: z.number().min(0).optional(),
+  currentAmount: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? 0 : Number(v)),
+    z.number().min(0, 'El monto actual no puede ser negativo').default(0)
+  ),
+  monthlyContribution: z.preprocess(
+    (v) => (v === 0 || v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().min(0, 'El aporte no puede ser negativo').optional()
+  ),
   targetDate: z.string().optional(),
-  targetMonths: z.number().int().min(1).optional(),
+  targetMonths: z.preprocess(
+    (v) => (v === 0 || v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+    z.number().int('Los meses deben ser un número entero').min(1, 'El plazo debe ser de al menos 1 mes').optional()
+  ),
 });
 
 // ---- ¿Puedo comprar esto? ----

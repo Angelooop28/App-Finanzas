@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { incomeSchema, debtSchema, adminCreateUserSchema } from '../validators';
+import { incomeSchema, debtSchema, adminCreateUserSchema, savingsGoalSchema } from '../validators';
 
 describe('Zod Validators', () => {
   it('should validate correct income data', () => {
@@ -47,5 +47,20 @@ describe('Zod Validators', () => {
       password: 'short'
     };
     expect(adminCreateUserSchema.safeParse(invalidData).success).toBe(false);
+  });
+
+  it('should gracefully handle savingsGoal with 0 or empty targetMonths without throwing Too small error', () => {
+    const dataWithZero = {
+      name: 'Viaje',
+      type: 'CUSTOM',
+      targetAmount: 100,
+      monthlyContribution: 0,
+      targetMonths: 0,
+    };
+    const result = savingsGoalSchema.safeParse(dataWithZero);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.targetMonths).toBeUndefined();
+    }
   });
 });

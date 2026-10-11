@@ -18,7 +18,8 @@ import {
   Trash2,
   Sparkles,
   Calendar,
-  DollarSign
+  DollarSign,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface Goal {
@@ -39,6 +40,7 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
   const [showForm, setShowForm] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [formError, setFormError] = useState('');
   const [form, setForm] = useState({ name: '', type: 'CUSTOM', targetAmount: 0, monthlyContribution: 0, targetMonths: 0 });
   const [depositingGoalId, setDepositingGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState(0);
@@ -62,12 +64,24 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
   const globalProgress = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
 
   const handleAdd = () => {
-    if (!form.name || form.targetAmount <= 0) {
-      alert('Ingresa el nombre de la meta y un monto objetivo mayor a 0.');
+    setFormError('');
+    if (!form.name.trim()) {
+      setFormError('Ingresa el nombre de la meta.');
+      return;
+    }
+    if (form.targetAmount <= 0) {
+      setFormError('El monto objetivo debe ser mayor a $0.');
       return;
     }
     startTransition(async () => {
-      const res = await addSavingsGoal(form);
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        targetAmount: Number(form.targetAmount),
+        monthlyContribution: form.monthlyContribution > 0 ? Number(form.monthlyContribution) : undefined,
+        targetMonths: form.targetMonths > 0 ? Number(form.targetMonths) : undefined,
+      };
+      const res = await addSavingsGoal(payload);
       if (res.success) {
         setGoals(prev => [
           ...prev,
@@ -82,8 +96,9 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
         ]);
         setShowForm(false);
         setForm({ name: '', type: 'CUSTOM', targetAmount: 0, monthlyContribution: 0, targetMonths: 0 });
+        setFormError('');
       } else {
-        alert(res.error || 'Error al guardar la meta de ahorro');
+        setFormError(res.error || 'Error al guardar la meta de ahorro');
       }
     });
   };
@@ -325,8 +340,15 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
             />
           </div>
 
+          {formError && (
+            <div className="alert alert-danger" style={{ marginTop: '1rem', padding: '0.65rem 0.85rem', fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <AlertTriangle size={15} color="var(--danger-500)" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', marginTop: '1.25rem' }}>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>
+            <Button variant="ghost" onClick={() => { setShowForm(false); setFormError(''); }}>
               Cancelar
             </Button>
             <Button
