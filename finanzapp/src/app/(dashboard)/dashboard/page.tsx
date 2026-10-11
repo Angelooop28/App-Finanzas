@@ -1,5 +1,6 @@
 import { getDashboardData } from '@/lib/actions';
 import { calculateNetIncome, calculateBudget, compareDebtStrategies } from '@/lib/engine';
+import { generateActionPlan, ActionCard } from '@/lib/finance/recommendation-engine';
 import DashboardClient from './DashboardClient';
 
 export default async function DashboardPage() {
@@ -51,6 +52,15 @@ export default async function DashboardPage() {
     totalDebtPayments,
   });
 
+  // Action plan ("¿Qué debo hacer hoy?")
+  const actionCards: ActionCard[] = generateActionPlan({
+    netIncome,
+    fixedExpenses,
+    variableExpenses,
+    debts,
+    savingsGoals,
+  });
+
   // Debt strategy
   const debtInputs = debts.map(d => ({
     id: d.id,
@@ -86,6 +96,7 @@ export default async function DashboardPage() {
     debtCount: debts.length,
     debtRecommendation: debtStrategy.recommendation,
     debtRecommendationReason: debtStrategy.recommendationReason,
+    actionCards,
     upcomingDebts: upcomingDebts.map(d => {
       const diff = Math.ceil((new Date(d.nextDueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       let daysText = `En ${diff} días`;

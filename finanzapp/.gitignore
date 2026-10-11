@@ -30,8 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (never commit real secrets; template is allowed)
 .env*
+!.env.example
+
+# local sqlite leftovers
+prisma/*.db
+prisma/*.db-journal
 
 # vercel
 .vercel

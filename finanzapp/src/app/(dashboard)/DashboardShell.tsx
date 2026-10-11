@@ -12,13 +12,15 @@ import {
   PiggyBank,
   HelpCircle,
   Bell,
-  User,
   LogOut,
   Menu,
   X,
   ShieldCheck,
   ChevronRight,
+  Sparkles,
+  FileSpreadsheet,
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 import styles from './dashboard.module.css';
 
 const NAV_ITEMS = [
@@ -29,9 +31,11 @@ const NAV_ITEMS = [
 ];
 
 const NAV_TOOLS = [
-  { href: '/dashboard/ahorro', label: 'Plan de Ahorro', icon: PiggyBank },
+  { href: '/dashboard/ia', label: 'Fin593 AI Asesor', icon: Sparkles, highlight: true },
   { href: '/dashboard/consultar', label: '¿Puedo comprarlo?', icon: HelpCircle },
-  { href: '/dashboard/alertas', label: 'Alertas', icon: Bell, badge: 0 },
+  { href: '/dashboard/ahorro', label: 'Plan de Ahorro', icon: PiggyBank },
+  { href: '/dashboard/reportes', label: 'Reportes & PDF', icon: FileSpreadsheet },
+  { href: '/dashboard/notificaciones', label: 'Notificaciones', icon: Bell },
 ];
 
 export default function DashboardLayout({
@@ -55,16 +59,18 @@ export default function DashboardLayout({
 
   const getPageTitle = () => {
     const routes: Record<string, { title: string; subtitle: string }> = {
-      '/dashboard': { title: 'Dashboard General', subtitle: 'Panorama financiero mensual' },
-      '/dashboard/ingresos': { title: 'Ingresos & Rol de Pagos', subtitle: 'Salario, IESS y aportes' },
-      '/dashboard/deudas': { title: 'Gestión de Deudas', subtitle: 'Estrategias de amortización y pagos' },
-      '/dashboard/gastos': { title: 'Control de Gastos', subtitle: 'Clasificación de costos fijos y variables' },
-      '/dashboard/ahorro': { title: 'Plan de Ahorro', subtitle: 'Fondo de emergencia y metas' },
-      '/dashboard/consultar': { title: '¿Puedo comprarlo?', subtitle: 'Asesor inteligente de compra previa' },
-      '/dashboard/alertas': { title: 'Alertas y Recordatorios', subtitle: 'Vencimientos y sobregiros' },
-      '/dashboard/perfil': { title: 'Mi Perfil', subtitle: 'Configuración de cuenta' },
+      '/dashboard': { title: 'Centro de Inteligencia Financiera', subtitle: 'Diagnóstico en tiempo real y plan de acción de hoy' },
+      '/dashboard/ingresos': { title: 'Ingresos & Rol de Pagos', subtitle: 'Salario neto, aportes IESS (9.45%) y descuentos' },
+      '/dashboard/deudas': { title: 'Gestión de Obligaciones & Deudas', subtitle: 'Amortización bancaria, SUPA, cooperativas e informales' },
+      '/dashboard/gastos': { title: 'Control Inteligente de Gastos', subtitle: 'Clasificación de costos fijos, variables y análisis de desvíos' },
+      '/dashboard/ia': { title: 'Fin593 AI — Asesor Financiero', subtitle: 'Diagnóstico explicable, simulador de crédito y recomendaciones' },
+      '/dashboard/ahorro': { title: 'Plan de Ahorro & Metas', subtitle: 'Fondo de emergencia (3 meses) y metas a futuro' },
+      '/dashboard/consultar': { title: '¿Puedo comprarlo?', subtitle: 'Asesor de impacto sobre excedente y flujo libre' },
+      '/dashboard/reportes': { title: 'Centro de Reportes & PDF', subtitle: 'Descarga de balances ejecutivos, flujo de caja y CSV' },
+      '/dashboard/notificaciones': { title: 'Centro de Alertas & Notificaciones', subtitle: 'Vencimientos críticos, desvíos y seguridad' },
+      '/dashboard/perfil': { title: 'Mi Perfil Financiero', subtitle: 'Parámetros de nómina, corte y seguridad de cuenta' },
     };
-    return routes[pathname] || { title: 'FinanzApp', subtitle: 'Finanzas Personales' };
+    return routes[pathname] || { title: 'Fin593', subtitle: 'Finanzas Inteligentes para Ecuador' };
   };
 
   const pageInfo = getPageTitle();
@@ -84,7 +90,7 @@ export default function DashboardLayout({
             <ShieldCheck size={22} className={styles.logoIcon} />
           </div>
           <div>
-            <span className={styles.sidebarTitle}>FinanzApp</span>
+            <span className={styles.sidebarTitle}>Fin593</span>
             <span className={styles.sidebarSubtitle}>Ecuador (USD)</span>
           </div>
           <button
@@ -141,6 +147,25 @@ export default function DashboardLayout({
               );
             })}
           </div>
+
+          {user?.role === 'ADMIN' && (
+            <div className={styles.sidebarSection}>
+              <div className={styles.navSectionLabel}>Administración</div>
+              <Link
+                href="/admin"
+                className={`${styles.navLink} ${pathname.startsWith('/admin') ? styles.navLinkActive : ''}`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className={styles.navLinkIconWrapper} style={{ color: 'var(--accent-500)' }}>
+                  <ShieldCheck size={18} />
+                </span>
+                <span className={styles.navLinkLabel} style={{ fontWeight: 700, color: 'var(--accent-600)' }}>
+                  Panel Admin
+                </span>
+                <ChevronRight size={14} className={styles.navLinkArrow} />
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -148,7 +173,7 @@ export default function DashboardLayout({
             <div className={styles.userAvatar}>{initials}</div>
             <div className={styles.userDetails}>
               <div className={styles.userName}>{user?.name || 'Usuario'}</div>
-              <div className={styles.userEmail}>{user?.email || 'demo@finanzapp.ec'}</div>
+              <div className={styles.userEmail}>{user?.email || 'usuario@fin593.ec'}</div>
             </div>
           </Link>
           <button
@@ -185,6 +210,7 @@ export default function DashboardLayout({
               <span className={styles.currencyDot} />
               <span>USD ($)</span>
             </div>
+            <ThemeToggle />
             <Link href="/dashboard/perfil" className={styles.topBarProfile}>
               <div className={styles.userAvatarSm}>{initials}</div>
             </Link>
@@ -195,6 +221,10 @@ export default function DashboardLayout({
         <div className={styles.pageContent}>
           {children}
         </div>
+
+        <footer className={styles.dashboardFooter}>
+          © 2026 Anedcode S.A. Todos los derechos reservados. - Fin593 es una marca registrada en Ecuador.
+        </footer>
       </main>
 
       {/* Bottom Navigation for Mobile (Sticky Bottom Bar) */}

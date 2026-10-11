@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fin593 / FinanzApp Ecuador
 
-## Getting Started
+Aplicación de gestión financiera personal adaptada a Ecuador (USD $, IESS, SUPA, BIESS, etc.) construida sobre Next.js 16 (App Router), React 19, TypeScript, y Prisma ORM.
 
-First, run the development server:
+## Instalación en Desarrollo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. Clona el repositorio e instala las dependencias:
+   ```bash
+   npm install
+   ```
+
+2. Configura las variables de entorno. Crea un archivo `.env` basado en `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Corre las migraciones de Prisma y rellena la base de datos (seeds):
+   ```bash
+   npx prisma generate
+   npm run db:migrate
+   npm run db:seed
+   ```
+
+4. Inicia el servidor de desarrollo:
+   ```bash
+   npm run dev
+   ```
+
+## Arquitectura de Carpetas
+
+- `/src/app`: Rutas del App Router de Next.js (Dashboard, Admin, Auth).
+- `/src/components/ui`: Componentes del Design System (`Button`, `Input`, `Combobox`, etc.).
+- `/src/lib/actions.ts`: Server Actions para manejo seguro y sin intermediarios de CRUD.
+- `/src/lib/engine`: Algoritmos financieros (Nómina Ecuador, Deudas Avalancha, Presupuesto).
+- `/src/lib/validators.ts`: Validaciones Zod estrictas para el cliente y el servidor.
+- `/prisma`: Esquema de la base de datos relacional (PostgreSQL).
+
+## Despliegue en Producción (Vercel + Neon/Supabase)
+
+1. En Vercel, crea un nuevo proyecto e importa el repositorio de Github.
+2. Configura las siguientes variables de entorno requeridas:
+   - `DATABASE_URL`: URI de conexión a tu base de datos PostgreSQL (p. ej., Neon o Supabase).
+   - `AUTH_SECRET`: Genera uno con `npx auth secret` u `openssl rand -base64 32`.
+   - `AUTH_URL`: La URL pública de la aplicación.
+   - Variables de SMTP (si aplica): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` o `RESEND_API_KEY`.
+3. Vercel detectará el comando de Build (`npm run build`) y ejecutará la compilación de Prisma en su paso previo de cacheo y compilación automática.
+4. Para correr la primera migración en producción usando una Github Action, o manualmente usa: `npx prisma migrate deploy`. Nunca ejecutes `db push` en producción.
+5. El flujo de Github Actions provisto en `.github/workflows/ci.yml` ejecutará `tsc`, `lint`, y `test` ante cualquier merge request o push a la rama `main`.
+
+## Crear el primer Administrador
+
+Para crear el primer rol administrativo, entra al dashboard normal y eleva tus permisos directamente desde la base de datos corriendo el siguiente query SQL crudo:
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'tu_correo@ejemplo.com';
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## © 2026 Desarrollado por Anedcode S.A.
+Todos los derechos reservados. Fin593 es una marca registrada en Ecuador.

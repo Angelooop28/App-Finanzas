@@ -9,7 +9,6 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  TrendingUp,
   TrendingDown,
   ArrowRight,
   Landmark,
@@ -25,7 +24,10 @@ import {
   AlertCircle,
   ChevronRight,
 } from 'lucide-react';
+import { ActionCard } from '@/lib/finance/recommendation-engine';
+import { Combobox } from '@/components/ui/Combobox';
 import styles from './dashboard-page.module.css';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 
 interface Props {
   userName: string;
@@ -44,6 +46,7 @@ interface Props {
   debtCount: number;
   debtRecommendation: string;
   debtRecommendationReason: string;
+  actionCards?: ActionCard[];
   upcomingDebts: { id: string; name: string; monthlyPayment: number; nextDueDate: string; daysText?: string; type: string }[];
   savingsGoals: { id: string; name: string; targetAmount: number; currentAmount: number; progressPercent: number }[];
   expensesByCategory: { name: string; icon: string; color: string; total: number }[];
@@ -94,6 +97,35 @@ export default function DashboardClient(props: Props) {
 
   return (
     <div className={styles.dashPage}>
+      {/* Greeting & Context Banner */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: 0 }}>
+            Hola, {props.userName || 'Edward'} 👋
+          </h2>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Este es el resumen en tiempo real de tus finanzas y compromisos en Ecuador.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '300px' }}>
+          <div style={{ flex: 1 }}>
+            <Combobox 
+              value="current"
+              onChange={() => {}}
+              options={[
+                { value: 'current', label: 'Mes Actual' },
+                { value: '3m', label: 'Últimos 3 Meses' },
+                { value: '6m', label: 'Últimos 6 Meses' },
+                { value: '12m', label: 'Últimos 12 Meses' },
+              ]}
+            />
+          </div>
+          <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '9999px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            📅 {new Date().toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        </div>
+      </div>
+
       {/* Summary KPI Cards */}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
@@ -150,6 +182,80 @@ export default function DashboardClient(props: Props) {
           </div>
         </div>
       </div>
+
+      {/* Panel "¿Qué debo hacer hoy?" — Prioridad Accionable */}
+      {props.actionCards && props.actionCards.length > 0 && (
+        <div style={{ marginBottom: 'var(--space-6)', animation: 'fadeInUp 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary-500)', animation: 'pulse 2s infinite' }} />
+              <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                ¿Qué debo hacer hoy con mi dinero?
+              </h3>
+            </div>
+            <Link href="/dashboard/notificaciones" style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--primary-600)', textDecoration: 'none' }}>
+              Ver todas las alertas ({props.actionCards.length}) →
+            </Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+            {props.actionCards.slice(0, 3).map(card => {
+              const isCrit = card.severity === 'CRITICAL';
+              const isWarn = card.severity === 'WARNING';
+              const borderCol = isCrit ? 'var(--danger-500)' : isWarn ? 'var(--warning-500)' : 'var(--success-500)';
+              const badgeBg = isCrit ? 'var(--danger-50)' : isWarn ? 'var(--warning-50)' : 'var(--success-50)';
+              const badgeCol = isCrit ? 'var(--danger-600)' : isWarn ? 'var(--warning-600)' : 'var(--success-600)';
+
+              return (
+                <div
+                  key={card.id}
+                  className="glass-card"
+                  style={{
+                    padding: '1.25rem',
+                    borderLeft: `4px solid ${borderCol}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          background: badgeBg,
+                          color: badgeCol,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {card.badgeLabel}
+                      </span>
+                    </div>
+                    <h4 style={{ fontWeight: 800, fontSize: 'var(--text-sm)', margin: '0 0 0.35rem', color: 'var(--text-primary)' }}>
+                      {card.title}
+                    </h4>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                      {card.explanation}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={card.actionHref}
+                    className={`btn ${isCrit ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <span>{card.actionLabel}</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Health Score Banner */}
       <div className={styles.healthCard}>
@@ -229,7 +335,33 @@ export default function DashboardClient(props: Props) {
             </div>
 
             {props.expensesByCategory.length > 0 ? (
-              <div className={styles.paymentList}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ height: '200px', width: '100%', margin: '0 auto' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={props.expensesByCategory}
+                        dataKey="total"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        stroke="none"
+                      >
+                        {props.expensesByCategory.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(value: unknown) => fmt(Number(value))}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className={styles.paymentList}>
                 {props.expensesByCategory.map((cat, i) => (
                   <div key={i} className={styles.paymentItem}>
                     <div className={styles.paymentIconBadge} style={{ background: `${cat.color}20`, color: cat.color }}>
@@ -252,6 +384,7 @@ export default function DashboardClient(props: Props) {
                     </div>
                   </div>
                 ))}
+              </div>
               </div>
             ) : (
               <div className="text-center py-6">

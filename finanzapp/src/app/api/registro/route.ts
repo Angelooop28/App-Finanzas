@@ -1,9 +1,7 @@
-/**
- * API Route: User Registration
- */
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
+import { logAudit } from '@/lib/audit';
 import { registerSchema } from '@/lib/validators';
 import { DEFAULT_CONFIGS, EXPENSE_CATEGORIES_DEFAULT } from '@/lib/config/defaults';
 
@@ -43,6 +41,7 @@ export async function POST(request: NextRequest) {
         name,
         email: email.toLowerCase(),
         passwordHash,
+        role: 'USER',
         // Create default financial configs
         financialConfigs: {
           create: Object.entries(DEFAULT_CONFIGS).map(([key, config]) => ({
@@ -80,6 +79,8 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    await logAudit('REGISTER', user.id, `Usuario registrado: ${email}`);
 
     return NextResponse.json(
       { message: 'Cuenta creada exitosamente', user },

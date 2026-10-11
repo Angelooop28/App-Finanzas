@@ -4,8 +4,12 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ThemeToggle from '@/components/ThemeToggle';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, ShieldCheck, AlertCircle } from 'lucide-react';
 import styles from '../auth.module.css';
+
+// Inlined at build time by Next.js; false in production builds.
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,26 +32,41 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Correo o contraseña incorrectos');
+        setError('Correo o contraseña incorrectos o cuenta bloqueada');
       } else {
-        router.push('/dashboard');
+        const res = await fetch('/api/auth/session');
+        const session = await res.json();
+        if (session?.user?.role === 'ADMIN') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
         router.refresh();
       }
     } catch {
-      setError('Error de conexión. Intenta de nuevo.');
+      setError('Error de conexión con el servidor. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail('demo@finanzapp.ec');
-    setPassword('Demo1234');
+  const handleFillAdmin = () => {
+    if (!IS_DEV) return;
+    setEmail('admin@finanzapp.ec');
+    setPassword(IS_DEV ? 'Admin1234' : '');
     setError('');
   };
 
   return (
     <div className={styles.authPage}>
+      {/* Top Controls (Theme Toggle & Home Link) */}
+      <div className={styles.topControls}>
+        <ThemeToggle />
+        <Link href="/" className="btn btn-secondary btn-sm">
+          Inicio
+        </Link>
+      </div>
+
       {/* Ambient background glow */}
       <div className="ambient-glow">
         <div className="ambient-glow-orb-1" />
@@ -61,23 +80,25 @@ export default function LoginPage() {
               <ShieldCheck size={28} className={styles.shieldIcon} />
             </div>
           </div>
-          <h1 className={styles.authTitle}>FinanzApp</h1>
+          <h1 className={styles.authTitle}>Fin593</h1>
           <p className={styles.authSubtitle}>
-            Gestión financiera inteligente para Ecuador. Salario neto, IESS, deudas y metas de ahorro.
+            Inteligencia financiera para Ecuador. Salario neto, IESS (9.45%), deudas y metas de ahorro.
           </p>
         </div>
 
         <div className={styles.authCard}>
-          {/* Quick Demo Access Bar */}
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className={styles.demoFillBtn}
-            title="Autocompletar con usuario de prueba"
-          >
-            <Sparkles size={15} className={styles.demoSparkle} />
-            <span>Acceso rápido: <strong>demo@finanzapp.ec</strong></span>
-          </button>
+          {/* Quick Admin Access Bar — development only, never shipped to production */}
+          {IS_DEV && (
+            <button
+              type="button"
+              onClick={handleFillAdmin}
+              className={styles.demoFillBtn}
+              title="Autocompletar con usuario Administrador (solo desarrollo)"
+            >
+              <Sparkles size={15} className={styles.demoSparkle} />
+              <span>Acceso Admin (dev): <strong>admin@finanzapp.ec</strong></span>
+            </button>
+          )}
 
           <form className={styles.authForm} onSubmit={handleSubmit} id="login-form">
             {error && (
@@ -114,6 +135,18 @@ export default function LoginPage() {
                 <label className="input-label" htmlFor="login-password">
                   Contraseña
                 </label>
+                <Link
+                  href="/recuperar-password"
+                  style={{
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--brand-navy-600)',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                  }}
+                  className="hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
               </div>
               <div className="input-wrapper">
                 <span className="input-icon">
@@ -154,10 +187,14 @@ export default function LoginPage() {
 
           <div className={styles.authFooter}>
             ¿No tienes cuenta?{' '}
-            <Link href="/registro">Regístrate gratis</Link>
+            <Link href="/registro">Regístrate en Fin593 gratis</Link>
           </div>
         </div>
       </div>
+
+      <footer className={styles.authLegalFooter}>
+        © 2026 Anedcode S.A. Todos los derechos reservados. - Fin593 es una marca registrada en Ecuador.
+      </footer>
     </div>
   );
 }

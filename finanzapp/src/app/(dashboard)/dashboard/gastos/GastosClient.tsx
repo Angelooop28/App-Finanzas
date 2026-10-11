@@ -1,51 +1,106 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { addExpense, deleteExpense } from '@/lib/actions';
 import {
   ReceiptText,
   Plus,
-  X,
   Trash2,
-  Calendar,
   DollarSign,
   Search,
-  Filter,
-  CheckCircle2,
-  TrendingDown,
   Layers,
   Repeat,
   Tag,
+  AlertTriangle,
+  Check,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
+import { StatCard } from '@/components/ui/StatCard';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Combobox, ComboboxOption } from '@/components/ui/Combobox';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 interface Expense {
-  id: string; description: string | null; amount: number; date: string;
-  isRecurring: boolean; categoryId: string; categoryName: string; categoryIcon: string; categoryColor: string;
+  id: string;
+  description: string | null;
+  amount: number;
+  date: string;
+  isRecurring: boolean;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string;
+  categoryColor: string;
 }
-interface Category { id: string; name: string; icon: string; color: string; type: string; }
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: string;
+}
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-export default function GastosClient({ initialExpenses, categories, currentPeriod }: { initialExpenses: Expense[]; categories: Category[]; currentPeriod: string }) {
-  const [expenses, setExpenses] = useState(initialExpenses);
-  const [showForm, setShowForm] = useState(false);
+export default function GastosClient({
+  initialExpenses,
+  categories,
+  currentPeriod,
+}: {
+  initialExpenses: Expense[];
+  categories: Category[];
+  currentPeriod: string;
+}) {
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<'ALL' | 'FIXED' | 'VARIABLE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ categoryId: categories[0]?.id || '', description: '', amount: 0, date: new Date().toISOString().split('T')[0], isRecurring: false });
+
+  const [form, setForm] = useState({
+    categoryId: categories[0]?.id || '',
+    description: '',
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    isRecurring: false,
+  });
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
-  const fixedTotal = expenses.filter(e => { const cat = categories.find(c => c.id === e.categoryId); return cat?.type === 'FIXED'; }).reduce((s, e) => s + e.amount, 0);
-  const variableTotal = total - fixedTotal;
+  const fixedTotal = expenses
+    .filter(e => {
+      const cat = categories.find(c => c.id === e.categoryId);
+      return cat?.type === 'FIXED';
+    })
+    .reduce((s, e) => s + e.amount, 0);
+  const variableTotal = Math.max(0, total - fixedTotal);
+  const fixedPercent = total > 0 ? Math.round((fixedTotal / total) * 100) : 0;
+  const variablePercent = total > 0 ? Math.round((variableTotal / total) * 100) : 0;
+
+  // Transform categories to Combobox options with icons
+  const categoryOptions: ComboboxOption[] = useMemo(() => {
+    return categories.map(c => ({
+      value: c.id,
+      label: c.name,
+      group: c.type === 'FIXED' ? '🔒 Gastos Fijos (Esenciales)' : '🎯 Gastos Variables / Deseo',
+      icon: <span style={{ fontSize: '1.1rem' }}>{c.icon || '🏷️'}</span>,
+      description: c.type === 'FIXED' ? 'Costo recurrente mensual' : 'Gasto discrecional o variable',
+    }));
+  }, [categories]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(e => {
       const cat = categories.find(c => c.id === e.categoryId);
       const matchesType = filterType === 'ALL' ? true : cat?.type === filterType;
-      const matchesSearch = searchQuery.trim() === ''
-        ? true
-        : (e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           e.categoryName.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch =
+        searchQuery.trim() === ''
+          ? true
+          : (e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            e.categoryName.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesType && matchesSearch;
     });
   }, [expenses, categories, filterType, searchQuery]);
@@ -53,21 +108,56 @@ export default function GastosClient({ initialExpenses, categories, currentPerio
   const byCategory = useMemo(() => {
     const map: Record<string, { name: string; icon: string; color: string; total: number; count: number }> = {};
     expenses.forEach(e => {
-      if (!map[e.categoryId]) map[e.categoryId] = { name: e.categoryName, icon: e.categoryIcon, color: e.categoryColor, total: 0, count: 0 };
+      if (!map[e.categoryId]) {
+        map[e.categoryId] = {
+          name: e.categoryName,
+          icon: e.categoryIcon,
+          color: e.categoryColor,
+          total: 0,
+          count: 0,
+        };
+      }
       map[e.categoryId].total += e.amount;
       map[e.categoryId].count++;
     });
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [expenses]);
 
+  // Find top spending categories for automated insights
+  const topCategory = byCategory[0];
+  const topCategoryPercent = total > 0 && topCategory ? Math.round((topCategory[1].total / total) * 100) : 0;
+
   const handleAdd = () => {
-    if (!form.categoryId || form.amount <= 0) return;
+    if (!form.categoryId || form.amount <= 0) {
+      alert('Selecciona una categoría e ingresa un monto mayor a 0.');
+      return;
+    }
     const cat = categories.find(c => c.id === form.categoryId);
     startTransition(async () => {
-      await addExpense(form);
-      setExpenses(prev => [{ id: `temp-${Date.now()}`, ...form, description: form.description || null, categoryName: cat?.name || 'Otro', categoryIcon: cat?.icon || '📦', categoryColor: cat?.color || '#64748B' }, ...prev]);
-      setShowForm(false);
-      setForm({ categoryId: categories[0]?.id || '', description: '', amount: 0, date: new Date().toISOString().split('T')[0], isRecurring: false });
+      const res = await addExpense(form);
+      if (res.success) {
+        setExpenses(prev => [
+          {
+            id: `temp-${Date.now()}`,
+            ...form,
+            description: form.description || null,
+            categoryName: cat?.name || 'Otro',
+            categoryIcon: cat?.icon || '📦',
+            categoryColor: cat?.color || '#2563EB',
+          },
+          ...prev,
+        ]);
+        setShowModal(false);
+        setForm({
+          categoryId: categories[0]?.id || '',
+          description: '',
+          amount: 0,
+          date: new Date().toISOString().split('T')[0],
+          isRecurring: false,
+        });
+      } else {
+        alert(res.error || 'Error al guardar el gasto');
+      }
     });
   };
 
@@ -82,202 +172,298 @@ export default function GastosClient({ initialExpenses, categories, currentPerio
   })();
 
   return (
-    <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ animation: 'fadeInUp 0.3s ease-out' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Control de Gastos</h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
-            {monthLabel} · Supervisa salidas fijas y variables
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Centro de Control de Gastos
+          </h2>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', textTransform: 'capitalize', marginTop: '2px' }}>
+            {monthLabel} · Entiende dónde se va tu dinero y toma mejores decisiones.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          <span>{showForm ? 'Cancelar' : 'Nuevo Gasto'}</span>
-        </button>
+
+        <Button
+          variant="primary"
+          onClick={() => setShowModal(true)}
+          icon={<Plus size={18} />}
+        >
+          Registrar Gasto
+        </Button>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <ReceiptText size={18} color="var(--warning-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Gasto Total del Mes</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--warning-400)' }}>{fmt(total)}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>{expenses.length} transacciones registradas</span>
-        </div>
+      {/* Level 1: KPIs Hierarchy */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+        <StatCard
+          title="Gastos del Mes"
+          value={fmt(total)}
+          subtitle={`${expenses.length} transacciones registradas`}
+          icon={<ReceiptText size={18} color="var(--warning-500)" />}
+          iconBg="rgba(245, 158, 11, 0.12)"
+          badge={{ text: 'Acumulado', variant: 'warning' }}
+        />
 
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Layers size={18} color="var(--primary-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Gastos Fijos</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--primary-400)' }}>{fmt(fixedTotal)}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Arriendo, servicios y colegiaturas</span>
-        </div>
+        <StatCard
+          title="Gastos Fijos"
+          value={fmt(fixedTotal)}
+          subtitle={`${fixedPercent}% del total del mes`}
+          icon={<Layers size={18} color="var(--brand-navy-500)" />}
+          iconBg="rgba(37, 99, 235, 0.1)"
+          badge={{ text: `${fixedPercent}%`, variant: 'primary' }}
+        />
 
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Tag size={18} color="var(--text-secondary)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Gastos Variables</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{fmt(variableTotal)}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Entretenimiento y compras extras</span>
-        </div>
+        <StatCard
+          title="Gastos Variables"
+          value={fmt(variableTotal)}
+          subtitle={`${variablePercent}% del total del mes`}
+          icon={<Tag size={18} color="var(--text-secondary)" />}
+          iconBg="var(--bg-secondary)"
+          badge={{ text: `${variablePercent}%`, variant: 'neutral' }}
+        />
       </div>
 
-      {/* Category Breakdown Bar */}
-      {byCategory.length > 0 && (
-        <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontWeight: 700, marginBottom: '0.75rem', fontSize: '0.875rem' }}>Distribución de Egresos por Categoría</h3>
-          <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', marginBottom: '1rem', background: 'rgba(15, 23, 42, 0.8)' }}>
+      {/* Level 2: Attention & Category Insights */}
+      {topCategory && total > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem 1.5rem',
+            marginBottom: '1.75rem',
+            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.03) 0%, rgba(245, 158, 11, 0.03) 100%), var(--bg-primary)',
+            border: '1px solid var(--glass-border)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <AlertTriangle size={18} color="var(--warning-500)" />
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Distribución y Diagnóstico de Categorías
+              </h3>
+            </div>
+            {topCategoryPercent >= 35 && (
+              <Badge variant="warning" size="sm" dot>
+                {topCategory[1].name} concentra el {topCategoryPercent}% del gasto
+              </Badge>
+            )}
+          </div>
+
+          {/* Segmented Category Progress Bar */}
+          <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', marginBottom: '1rem', background: 'var(--bg-secondary)' }}>
             {byCategory.map(([id, c]) => (
-              <div key={id} style={{ width: `${total > 0 ? (c.total / total) * 100 : 0}%`, background: c.color, transition: 'width 0.5s' }} />
+              <div
+                key={id}
+                title={`${c.name}: ${fmt(c.total)}`}
+                style={{
+                  width: `${(c.total / total) * 100}%`,
+                  background: c.color || 'var(--brand-navy-500)',
+                  transition: 'width 0.4s ease',
+                }}
+              />
             ))}
           </div>
+
+          {/* Category Legend */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
             {byCategory.map(([id, c]) => (
-              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                <span>{c.name}: <strong style={{ color: 'var(--text-primary)' }}>{fmt(c.total)}</strong></span>
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color || 'var(--brand-navy-500)', flexShrink: 0 }} />
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {c.icon} {c.name}: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{fmt(c.total)}</strong>
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Add Form */}
-      {showForm && (
-        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', animation: 'fadeInDown 0.3s ease-out' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <Plus size={18} color="var(--primary-400)" />
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>Registrar Nuevo Gasto</h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div className="input-group">
-              <label className="input-label">Categoría *</label>
-              <select className="select" value={form.categoryId} onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Monto en USD ($) *</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.amount || ''} onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Descripción / Lugar</label>
-              <input className="input" placeholder="Ej: Supermaxi compras quincena" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Fecha del gasto</label>
-              <input className="input" type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
-            </div>
-          </div>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-            <input type="checkbox" checked={form.isRecurring} onChange={e => setForm(p => ({ ...p, isRecurring: e.target.checked }))} style={{ accentColor: 'var(--primary-500)' }} />
-            <span>Gasto recurrente cada mes</span>
-          </label>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-            <button className={`btn btn-primary ${isPending ? 'btn-loading' : ''}`} onClick={handleAdd} disabled={isPending}>
-              <span>Guardar Gasto</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filter and Search Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <button
-            className={`btn btn-sm ${filterType === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+      {/* Level 3: Search & Filter Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Button
+            variant={filterType === 'ALL' ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => setFilterType('ALL')}
           >
             Todos ({expenses.length})
-          </button>
-          <button
-            className={`btn btn-sm ${filterType === 'FIXED' ? 'btn-primary' : 'btn-secondary'}`}
+          </Button>
+          <Button
+            variant={filterType === 'FIXED' ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => setFilterType('FIXED')}
           >
-            Fijos
-          </button>
-          <button
-            className={`btn btn-sm ${filterType === 'VARIABLE' ? 'btn-primary' : 'btn-secondary'}`}
+            🔒 Fijos
+          </Button>
+          <Button
+            variant={filterType === 'VARIABLE' ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => setFilterType('VARIABLE')}
           >
-            Variables
-          </button>
+            🎯 Variables
+          </Button>
         </div>
 
-        <div className="input-wrapper" style={{ maxWidth: 260 }}>
-          <span className="input-icon">
-            <Search size={15} />
-          </span>
-          <input
+        <div style={{ maxWidth: 300 }}>
+          <Input
             type="text"
-            className="input"
-            placeholder="Buscar por nombre..."
+            icon={<Search size={16} />}
+            placeholder="Buscar por nombre o categoría..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ padding: '0.45rem 1rem 0.45rem 2.5rem', fontSize: 'var(--text-xs)' }}
           />
         </div>
       </div>
 
-      {/* Expense List */}
+      {/* Level 4: Transaction List (Table on Desktop, Cards on Mobile) */}
       {filteredExpenses.length === 0 ? (
-        <div className="glass-card" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
-          <ReceiptText size={42} color="var(--text-tertiary)" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-          <h3 style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>No se encontraron gastos</h3>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: '1rem' }}>
-            {searchQuery ? 'Prueba con otro término de búsqueda.' : 'Registra tus compras y consumos para control de presupuesto.'}
-          </p>
-          {!searchQuery && (
-            <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-              <Plus size={16} />
-              <span>Registrar primer gasto</span>
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={<ReceiptText size={32} color="var(--text-tertiary)" />}
+          title={searchQuery ? 'No se encontraron gastos con ese criterio' : '¡Aún no tienes gastos registrados este mes!'}
+          description={searchQuery ? 'Prueba cambiando el texto de búsqueda o el filtro de categoría.' : 'Registra tus consumos diarios, arriendos o compras para mantener tu presupuesto al día.'}
+          actionText={!searchQuery ? 'Registrar primer gasto' : undefined}
+          onAction={() => setShowModal(true)}
+          actionIcon={<Plus size={16} />}
+        />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {filteredExpenses.map(e => (
-            <div key={e.id} className="glass-card" style={{ padding: '0.85rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 'var(--radius-lg)', background: `${e.categoryColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.categoryColor, flexShrink: 0 }}>
-                <ReceiptText size={18} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {e.description || e.categoryName}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          {filteredExpenses.map(expense => (
+            <div
+              key={expense.id}
+              className="card"
+              style={{
+                padding: '1rem 1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 'var(--radius-xl)',
+                    background: `${expense.categoryColor || '#2563EB'}18`,
+                    color: expense.categoryColor || 'var(--brand-navy-500)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  {expense.categoryIcon || '🧾'}
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
-                  <span>{new Date(e.date).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</span>
-                  <span>· {e.categoryName}</span>
-                  {e.isRecurring && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 6px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-400)', fontSize: '0.65rem', fontWeight: 600 }}>
-                      <Repeat size={10} /> Recurrente
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {expense.description || expense.categoryName}
                     </span>
-                  )}
+                    {expense.isRecurring && (
+                      <Badge variant="primary" size="sm" dot>
+                        <Repeat size={10} style={{ marginRight: 2 }} /> Recurrente
+                      </Badge>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px' }}>
+                    <span>{new Date(expense.date).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span>· {expense.categoryName}</span>
+                  </div>
                 </div>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--warning-400)', whiteSpace: 'nowrap' }}>
-                {fmt(e.amount)}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                  {fmt(expense.amount)}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(expense.id)}
+                  title="Eliminar registro"
+                  style={{ color: 'var(--danger-500)', padding: '0.35rem' }}
+                  icon={<Trash2 size={16} />}
+                />
               </div>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => handleDelete(e.id)}
-                title="Eliminar gasto"
-                style={{ padding: '0.35rem', color: 'var(--danger-400)' }}
-              >
-                <Trash2 size={15} />
-              </button>
             </div>
           ))}
         </div>
       )}
+
+      {/* Modal Form for Adding Expense */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Registrar Nuevo Gasto"
+        subtitle="Ingresa el monto y categoría para contabilizarlo en tu balance mensual"
+        icon={<Sparkles size={20} />}
+        maxWidth="md"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <Input
+            label="Monto del gasto ($) *"
+            type="text"
+            inputMode="decimal"
+            icon={<DollarSign size={18} />}
+            placeholder="0.00"
+            value={form.amount || ''}
+            onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
+            style={{ fontSize: '1.2rem', fontWeight: 700 }}
+            autoFocus
+          />
+
+          <Combobox
+            label="Categoría de gasto"
+            options={categoryOptions}
+            value={form.categoryId}
+            onChange={val => setForm(p => ({ ...p, categoryId: val }))}
+            required
+          />
+
+          <Input
+            label="Descripción o comercio (Opcional)"
+            placeholder="Ej: Supermaxi compras quincena / Arriendo"
+            value={form.description}
+            onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+          />
+
+          <Input
+            label="Fecha del gasto"
+            type="date"
+            icon={<Calendar size={16} />}
+            value={form.date}
+            onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+          />
+
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={form.isRecurring}
+              onChange={e => setForm(p => ({ ...p, isRecurring: e.target.checked }))}
+              style={{ width: 16, height: 16, accentColor: 'var(--brand-navy-600)' }}
+            />
+            <span>Marcar como gasto fijo recurrente cada mes</span>
+          </label>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleAdd}
+              disabled={isPending || !form.categoryId || form.amount <= 0}
+              icon={<Check size={16} />}
+            >
+              Guardar Gasto
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

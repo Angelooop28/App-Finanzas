@@ -1,14 +1,15 @@
 // Prisma Schema — FinanzApp
 // Modelo de datos para gestión financiera personal (Ecuador)
-// Usando SQLite para desarrollo local, migrar a PostgreSQL para producción
+// PostgreSQL para producción
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Neon pooled connection (-pooler) for runtime
+  directUrl = env("DIRECT_URL")   // Neon direct connection for migrations
 }
 
 // ---- Auth.js Models ----
@@ -51,6 +52,23 @@ model VerificationToken {
 
 // ---- App Models ----
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  SUSPENDED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -61,6 +79,9 @@ model User {
   age           Int?
   city          String?
   currency      String    @default("USD")
+  role          Role      @default(USER)
+  status        UserStatus       @default(ACTIVE)
+  plan          SubscriptionPlan @default(FREE)
   payFrequency  PayFrequency @default(MONTHLY)
   payrollCutoffDay Int?
   onboardingCompleted Boolean @default(false)
@@ -68,17 +89,19 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  accounts          Account[]
-  sessions          Session[]
-  incomes           Income[]
-  payrollDeductions PayrollDeduction[]
-  debts             Debt[]
-  expenseCategories ExpenseCategory[]
-  expenses          Expense[]
-  savingsGoals      SavingsGoal[]
-  alerts            Alert[]
-  purchaseQueries   PurchaseQuery[]
-  financialConfigs  FinancialConfig[]
+  accounts             Account[]
+  sessions             Session[]
+  incomes              Income[]
+  payrollDeductions    PayrollDeduction[]
+  debts                Debt[]
+  expenseCategories    ExpenseCategory[]
+  expenses             Expense[]
+  savingsGoals         SavingsGoal[]
+  alerts               Alert[]
+  purchaseQueries      PurchaseQuery[]
+  financialConfigs     FinancialConfig[]
+  passwordResetTokens  PasswordResetToken[]
+  auditLogs            AuditLog[]
 }
 
 enum PayFrequency {
@@ -335,4 +358,37 @@ model FinancialConfig {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
+}
+
+// ---- Password Reset (OTP) ----
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String   // OTP de 6 dígitos, hasheado con bcrypt
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---- Audit Log ----
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // LOGIN, REGISTER, PASSWORD_RESET_REQUEST, PASSWORD_RESET_COMPLETE, ADMIN_ACTION
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }

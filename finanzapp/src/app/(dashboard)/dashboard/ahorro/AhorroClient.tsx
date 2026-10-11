@@ -3,6 +3,9 @@
 import { useState, useTransition, useMemo } from 'react';
 import { addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } from '@/lib/actions';
 import { simulateSavings, calculateEmergencyFund } from '@/lib/engine';
+import { Combobox } from '@/components/ui/Combobox';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import {
   Target,
   ShieldCheck,
@@ -15,7 +18,6 @@ import {
   Trash2,
   Sparkles,
   Calendar,
-  AlertCircle,
   DollarSign
 } from 'lucide-react';
 
@@ -60,22 +62,29 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
   const globalProgress = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
 
   const handleAdd = () => {
-    if (!form.name || form.targetAmount <= 0) return;
+    if (!form.name || form.targetAmount <= 0) {
+      alert('Ingresa el nombre de la meta y un monto objetivo mayor a 0.');
+      return;
+    }
     startTransition(async () => {
-      await addSavingsGoal(form);
-      setGoals(prev => [
-        ...prev,
-        {
-          ...form,
-          id: `temp-${Date.now()}`,
-          currentAmount: 0,
-          monthlyContribution: form.monthlyContribution || null,
-          targetMonths: form.targetMonths || null,
-          status: 'ACTIVE'
-        }
-      ]);
-      setShowForm(false);
-      setForm({ name: '', type: 'CUSTOM', targetAmount: 0, monthlyContribution: 0, targetMonths: 0 });
+      const res = await addSavingsGoal(form);
+      if (res.success) {
+        setGoals(prev => [
+          ...prev,
+          {
+            ...form,
+            id: `temp-${Date.now()}`,
+            currentAmount: 0,
+            monthlyContribution: form.monthlyContribution || null,
+            targetMonths: form.targetMonths || null,
+            status: 'ACTIVE'
+          }
+        ]);
+        setShowForm(false);
+        setForm({ name: '', type: 'CUSTOM', targetAmount: 0, monthlyContribution: 0, targetMonths: 0 });
+      } else {
+        alert(res.error || 'Error al guardar la meta de ahorro');
+      }
     });
   };
 
@@ -112,22 +121,20 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.65rem' }}>
-          <button
-            className={`btn ${showSimulator ? 'btn-primary' : 'btn-secondary'}`}
+          <Button
+            variant={showSimulator ? 'primary' : 'secondary'}
             onClick={() => setShowSimulator(!showSimulator)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            icon={<SlidersHorizontal size={16} />}
           >
-            <SlidersHorizontal size={16} />
             {showSimulator ? 'Cerrar Simulador' : 'Simulador'}
-          </button>
-          <button
-            className="btn btn-primary"
+          </Button>
+          <Button
+            variant="primary"
             onClick={() => setShowForm(!showForm)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            icon={showForm ? <X size={16} /> : <Plus size={16} />}
           >
-            {showForm ? <X size={16} /> : <Plus size={16} />}
             {showForm ? 'Cancelar' : 'Nueva Meta'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -230,19 +237,14 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div className="input-group">
-              <label className="input-label">Aporte mensual proyectado ($)</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input
-                  className="input"
-                  type="number"
-                  min="1"
-                  value={simAmount}
-                  onChange={e => setSimAmount(parseFloat(e.target.value) || 0)}
-                />
-              </div>
-            </div>
+            <Input
+              label="Aporte mensual proyectado ($)"
+              type="text"
+              inputMode="decimal"
+              icon={<DollarSign size={16} />}
+              value={simAmount}
+              onChange={e => setSimAmount(parseFloat(e.target.value) || 0)}
+            />
             <div className="input-group">
               <label className="input-label">Plazo en meses ({simMonths} meses)</label>
               <input
@@ -288,69 +290,54 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div className="input-group">
-              <label className="input-label">Nombre de la meta *</label>
-              <input
-                className="input"
-                placeholder="Ej: Viaje a Galápagos, Fondo de Emergencia"
-                value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Tipo de meta</label>
-              <select
-                className="select"
-                value={form.type}
-                onChange={e => setForm(p => ({ ...p, type: e.target.value }))}
-              >
-                <option value="CUSTOM">Meta personalizada</option>
-                <option value="EMERGENCY_FUND">Fondo de emergencia</option>
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Monto objetivo ($) *</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.targetAmount || ''}
-                  onChange={e => setForm(p => ({ ...p, targetAmount: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Ahorro mensual programado ($)</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.monthlyContribution || ''}
-                  onChange={e => setForm(p => ({ ...p, monthlyContribution: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
+            <Input
+              label="Nombre de la meta *"
+              placeholder="Ej: Viaje a Galápagos, Fondo de Emergencia"
+              value={form.name}
+              onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            />
+            <Combobox
+              label="Tipo de meta"
+              options={[
+                { value: 'CUSTOM', label: 'Meta personalizada' },
+                { value: 'EMERGENCY_FUND', label: 'Fondo de emergencia' }
+              ]}
+              value={form.type}
+              onChange={val => setForm(p => ({ ...p, type: val }))}
+            />
+            <Input
+              label="Monto objetivo ($) *"
+              type="text"
+              inputMode="decimal"
+              icon={<DollarSign size={16} />}
+              placeholder="0.00"
+              value={form.targetAmount || ''}
+              onChange={e => setForm(p => ({ ...p, targetAmount: parseFloat(e.target.value) || 0 }))}
+            />
+            <Input
+              label="Ahorro mensual programado ($)"
+              type="text"
+              inputMode="decimal"
+              icon={<DollarSign size={16} />}
+              placeholder="0.00"
+              value={form.monthlyContribution || ''}
+              onChange={e => setForm(p => ({ ...p, monthlyContribution: parseFloat(e.target.value) || 0 }))}
+            />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', marginTop: '1.25rem' }}>
-            <button className="btn btn-ghost" onClick={() => setShowForm(false)}>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>
               Cancelar
-            </button>
-            <button
-              className={`btn btn-primary ${isPending ? 'btn-loading' : ''}`}
+            </Button>
+            <Button
+              variant="primary"
+              isLoading={isPending}
               onClick={handleAdd}
-              disabled={isPending || !form.name || form.targetAmount <= 0}
+              disabled={!form.name || form.targetAmount <= 0}
+              icon={<Check size={16} />}
             >
-              <Check size={16} /> Guardar Meta
-            </button>
+              Guardar Meta
+            </Button>
           </div>
         </div>
       )}
@@ -365,9 +352,9 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', maxWidth: 420, margin: '0 auto 1.5rem' }}>
             Define tu primera meta de ahorro o construye tu fondo de emergencia para protegerte ante cualquier imprevisto.
           </p>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={16} /> Crear mi primera meta
-          </button>
+          <Button variant="primary" onClick={() => setShowForm(true)} icon={<Plus size={16} />}>
+            Crear mi primera meta
+          </Button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -407,14 +394,14 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
                     </div>
                   </div>
 
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleDelete(g.id)}
                     style={{ color: 'var(--danger-400)', padding: '0.35rem' }}
                     title="Eliminar meta"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                    icon={<Trash2 size={16} />}
+                  />
                 </div>
 
                 {/* Progress Visual */}
@@ -446,11 +433,9 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
 
                   {depositingGoalId === g.id ? (
                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                      <input
-                        className="input"
-                        type="number"
-                        min="0.01"
-                        step="0.01"
+                      <Input
+                        type="text"
+                        inputMode="decimal"
                         placeholder="$0.00"
                         autoFocus
                         value={depositAmount || ''}
@@ -468,38 +453,39 @@ export default function AhorroClient({ initialGoals }: { initialGoals: Goal[] })
                         }}
                         style={{ width: 105, padding: '0.35rem 0.6rem', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)' }}
                       />
-                      <button
-                        className="btn btn-primary btn-sm"
+                      <Button
+                        variant="primary"
+                        size="sm"
                         disabled={depositAmount <= 0}
                         onClick={() => {
                           handleDeposit(g, depositAmount);
                           setDepositingGoalId(null);
                           setDepositAmount(0);
                         }}
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
+                        icon={<Check size={14} />}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           setDepositingGoalId(null);
                           setDepositAmount(0);
                         }}
-                      >
-                        <X size={14} />
-                      </button>
+                        icon={<X size={14} />}
+                      />
                     </div>
                   ) : (
-                    <button
-                      className="btn btn-secondary btn-sm"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => {
                         setDepositingGoalId(g.id);
                         setDepositAmount(0);
                       }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      icon={<Plus size={13} />}
                     >
-                      <Plus size={13} /> Depositar
-                    </button>
+                      Depositar
+                    </Button>
                   )}
                 </div>
               </div>

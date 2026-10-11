@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { evaluatePurchase, type RecommendationType, type FinancialSnapshot } from '@/lib/engine';
 import { savePurchaseQuery } from '@/lib/actions';
 import Link from 'next/link';
+import { Input } from '@/components/ui/Input';
 import {
   HelpCircle,
   CheckCircle2,
@@ -14,7 +15,6 @@ import {
   TrendingUp,
   DollarSign,
   ArrowRight,
-  ShieldCheck,
   Sparkles
 } from 'lucide-react';
 
@@ -151,35 +151,26 @@ export default function ConsultarClient({
               </div>
             </div>
 
-            <div className="input-group" style={{ marginBottom: '1.25rem' }}>
-              <label className="input-label">¿Qué deseas comprar?</label>
-              <input
-                className="input"
-                placeholder="Ej: Laptop para trabajo, Celular nuevo, Smart TV"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
-            </div>
+            <Input
+              label="¿Qué deseas comprar?"
+              placeholder="Ej: Laptop para trabajo, Celular nuevo, Smart TV"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              containerStyle={{ marginBottom: '1.25rem' }}
+            />
 
-            <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="input-label">Monto de la compra ($)</label>
-              <div className="input-wrapper">
-                <span className="input-icon">
-                  <DollarSign size={20} />
-                </span>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={amount || ''}
-                  onChange={e => setAmount(parseFloat(e.target.value) || 0)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleEvaluate(); }}
-                  style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
-                />
-              </div>
-            </div>
+            <Input
+              label="Monto estimado de la compra (USD)"
+              type="text"
+              inputMode="decimal"
+              icon={<DollarSign size={20} />}
+              placeholder="0.00"
+              value={amount || ''}
+              onChange={e => setAmount(parseFloat(e.target.value) || 0)}
+              onKeyDown={e => { if (e.key === 'Enter') handleEvaluate(); }}
+              style={{ fontSize: '1.2rem', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
+              containerStyle={{ marginBottom: '1.5rem' }}
+            />
 
             <button
               className={`btn btn-primary w-full ${isPending ? 'btn-loading' : ''}`}

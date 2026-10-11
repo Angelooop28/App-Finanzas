@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { addDebt, deleteDebt, markDebtPaid } from '@/lib/actions';
 import { compareDebtStrategies } from '@/lib/engine';
 import {
@@ -14,373 +14,480 @@ import {
   CheckCircle2,
   Trash2,
   Plus,
-  X,
-  TrendingDown,
   Zap,
   Calendar,
   DollarSign,
   Percent,
   Check,
-  Award,
+  Building2,
+  ShoppingBag,
   Sparkles,
-  ArrowRight,
 } from 'lucide-react';
+import { StatCard } from '@/components/ui/StatCard';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Combobox, ComboboxOption } from '@/components/ui/Combobox';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 
 interface Debt {
-  id: string; name: string; creditor: string | null; type: string;
-  totalOwed: number; originalAmount: number | null; monthlyPayment: number;
-  interestRate: number; nextDueDate: string | null; remainingInstallments: number | null; status: string;
+  id: string;
+  name: string;
+  creditor: string | null;
+  type: string;
+  totalOwed: number;
+  originalAmount: number | null;
+  monthlyPayment: number;
+  interestRate: number;
+  nextDueDate: string | null;
+  remainingInstallments: number | null;
+  status: string;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 
-const DEBT_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
-  CREDIT_CARD: { label: 'Tarjeta de Crédito', icon: CreditCard, color: '#818CF8' },
-  PERSONAL_LOAN: { label: 'Préstamo Bancario', icon: Landmark, color: '#38BDF8' },
-  MORTGAGE: { label: 'Hipoteca', icon: Home, color: '#34D399' },
-  INFORMAL: { label: 'Préstamo Informal', icon: Users, color: '#FBBF24' },
-  IESS_LOAN: { label: 'Préstamo IESS', icon: ShieldCheck, color: '#A78BFA' },
-  CAR_LOAN: { label: 'Crédito Automotriz', icon: Car, color: '#FB7185' },
-  STUDENT_LOAN: { label: 'Crédito Educativo', icon: FileText, color: '#4ADE80' },
-  OTHER: { label: 'Otra Obligación', icon: FileText, color: '#94A3B8' },
-};
+const DEBT_TYPE_OPTIONS: ComboboxOption[] = [
+  // Bancos
+  { value: 'CREDIT_CARD', label: 'Tarjeta de Crédito Bancaria', group: '🏦 Sistema Financiero', icon: <CreditCard size={16} color="#3B82F6" />, description: 'Visa, Mastercard, Diners, etc.' },
+  { value: 'PERSONAL_LOAN', label: 'Préstamo de Consumo / Personal', group: '🏦 Sistema Financiero', icon: <Landmark size={16} color="#2563EB" />, description: 'Crédito bancario tradicional' },
+  { value: 'COOPERATIVE', label: 'Cooperativa de Ahorro y Crédito', group: '🏦 Sistema Financiero', icon: <Building2 size={16} color="#0284C7" />, description: 'Crédito en coop. de ahorro' },
+  
+  // BIESS / IESS
+  { value: 'IESS_LOAN', label: 'Préstamo Quirografario / BIESS', group: '🛡️ Seguridad Social (BIESS)', icon: <ShieldCheck size={16} color="#7C3AED" />, description: 'Descuento por rol o planilla' },
+  { value: 'MORTGAGE_BIESS', label: 'Hipotecario BIESS', group: '🛡️ Seguridad Social (BIESS)', icon: <Home size={16} color="#6D28D9" />, description: 'Vivienda de interés público' },
+
+  // Familia / Legal (SUPA)
+  { value: 'SUPA', label: 'Pensión Alimenticia SUPA', group: '⚖️ Obligaciones Legales & Familia', icon: <Users size={16} color="#F59E0B" />, description: 'Prioridad 1 legal y de retención' },
+
+  // Bienes
+  { value: 'MORTGAGE', label: 'Hipoteca / Crédito Vivienda Bancario', group: '🏠 Vivienda & Vehículos', icon: <Home size={16} color="#10B981" />, description: 'Inmueble o terreno' },
+  { value: 'CAR_LOAN', label: 'Crédito Automotriz / Vehicular', group: '🏠 Vivienda & Vehículos', icon: <Car size={16} color="#F43F5E" />, description: 'Vehículo particular o trabajo' },
+
+  // Comercial & Otros
+  { value: 'RETAIL', label: 'Crédito Directo Almacén (De Prati, Sukasa, etc.)', group: '🛍️ Casas Comerciales & Otros', icon: <ShoppingBag size={16} color="#EC4899" />, description: 'Crédito en almacenes' },
+  { value: 'STUDENT_LOAN', label: 'Crédito Educativo', group: '🛍️ Casas Comerciales & Otros', icon: <FileText size={16} color="#14B8A6" />, description: 'Universidad o posgrado' },
+  { value: 'INFORMAL', label: 'Préstamo Familiar / Banquito / Informal', group: '🛍️ Casas Comerciales & Otros', icon: <Users size={16} color="#D97706" />, description: 'Acuerdo privado o comunitario' },
+  { value: 'OTHER', label: 'Otra Obligación', group: '🛍️ Casas Comerciales & Otros', icon: <FileText size={16} color="#64748B" />, description: 'Servicios o acuerdos varios' },
+];
 
 export default function DeudasClient({ initialDebts }: { initialDebts: Debt[] }) {
-  const [debts, setDebts] = useState(initialDebts);
-  const [showForm, setShowForm] = useState(false);
+  const [debts, setDebts] = useState<Debt[]>(initialDebts);
+  const [showModal, setShowModal] = useState(false);
   const [showStrategy, setShowStrategy] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: '', creditor: '', type: 'CREDIT_CARD', totalOwed: 0, monthlyPayment: 0, interestRate: 0, nextDueDate: '', remainingInstallments: 0 });
+
+  const [form, setForm] = useState({
+    name: '',
+    creditor: '',
+    type: 'CREDIT_CARD',
+    totalOwed: 0,
+    monthlyPayment: 0,
+    interestRate: 0,
+    nextDueDate: '',
+    remainingInstallments: 0,
+  });
 
   const activeDebts = useMemo(() => debts.filter(d => d.status === 'ACTIVE'), [debts]);
   const paidDebts = useMemo(() => debts.filter(d => d.status === 'PAID_OFF'), [debts]);
   const totalDebt = activeDebts.reduce((s, d) => s + d.totalOwed, 0);
   const totalMonthly = activeDebts.reduce((s, d) => s + d.monthlyPayment, 0);
 
+  // Identify next critical due date
+  const nextCriticalDebt = useMemo(() => {
+    if (activeDebts.length === 0) return null;
+    const sorted = [...activeDebts]
+      .filter(d => d.nextDueDate)
+      .sort((a, b) => new Date(a.nextDueDate!).getTime() - new Date(b.nextDueDate!).getTime());
+    return sorted[0] || null;
+  }, [activeDebts]);
+
+  const daysUntilNextDue = useMemo(() => {
+    if (!nextCriticalDebt || !nextCriticalDebt.nextDueDate) return null;
+    const diff = new Date(nextCriticalDebt.nextDueDate).getTime() - new Date().setHours(0,0,0,0);
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [nextCriticalDebt]);
+
   const strategy = useMemo(() => {
     if (activeDebts.length === 0) return null;
     return compareDebtStrategies(activeDebts.map(d => ({
-      id: d.id, name: d.name, totalOwed: d.totalOwed,
-      monthlyPayment: d.monthlyPayment, interestRate: d.interestRate,
+      id: d.id,
+      name: d.name,
+      totalOwed: d.totalOwed,
+      monthlyPayment: d.monthlyPayment,
+      interestRate: d.interestRate,
     })));
   }, [activeDebts]);
 
   const handleAdd = () => {
-    if (!form.name || form.totalOwed <= 0 || form.monthlyPayment <= 0) return;
+    if (!form.name || form.totalOwed <= 0 || form.monthlyPayment <= 0) {
+      alert('Ingresa el nombre, saldo adeudado (> 0) y cuota mensual (> 0).');
+      return;
+    }
     startTransition(async () => {
-      await addDebt({ ...form, nextDueDate: form.nextDueDate || undefined, remainingInstallments: form.remainingInstallments || undefined });
-      setDebts(prev => [...prev, { ...form, id: `temp-${Date.now()}`, originalAmount: form.totalOwed, status: 'ACTIVE', creditor: form.creditor || null, nextDueDate: form.nextDueDate || null, remainingInstallments: form.remainingInstallments || null }]);
-      setShowForm(false);
-      setForm({ name: '', creditor: '', type: 'CREDIT_CARD', totalOwed: 0, monthlyPayment: 0, interestRate: 0, nextDueDate: '', remainingInstallments: 0 });
+      const res = await addDebt({
+        ...form,
+        nextDueDate: form.nextDueDate || undefined,
+        remainingInstallments: form.remainingInstallments || undefined,
+      });
+      if (res.success) {
+        setDebts(prev => [
+          ...prev,
+          {
+            ...form,
+            id: `temp-${Date.now()}`,
+            originalAmount: form.totalOwed,
+            status: 'ACTIVE',
+            creditor: form.creditor || null,
+            nextDueDate: form.nextDueDate || null,
+            remainingInstallments: form.remainingInstallments || null,
+          },
+        ]);
+        setShowModal(false);
+        setForm({
+          name: '',
+          creditor: '',
+          type: 'CREDIT_CARD',
+          totalOwed: 0,
+          monthlyPayment: 0,
+          interestRate: 0,
+          nextDueDate: '',
+          remainingInstallments: 0,
+        });
+      } else {
+        alert(res.error || 'Error al guardar la obligación');
+      }
     });
   };
 
   const handlePay = (debt: Debt) => {
     startTransition(async () => {
-      await markDebtPaid(debt.id, debt.monthlyPayment);
-      setDebts(prev => prev.map(d => {
-        if (d.id !== debt.id) return d;
-        const newBalance = Math.max(0, d.totalOwed - d.monthlyPayment);
-        return { ...d, totalOwed: newBalance, remainingInstallments: d.remainingInstallments ? d.remainingInstallments - 1 : null, status: newBalance <= 0 ? 'PAID_OFF' : 'ACTIVE' };
-      }));
+      const res = await markDebtPaid(debt.id, debt.monthlyPayment);
+      if (res.success) {
+        setDebts(prev =>
+          prev.map(d => {
+            if (d.id !== debt.id) return d;
+            const newBalance = Math.max(0, d.totalOwed - d.monthlyPayment);
+            return {
+              ...d,
+              totalOwed: newBalance,
+              remainingInstallments: d.remainingInstallments ? d.remainingInstallments - 1 : null,
+              status: newBalance <= 0 ? 'PAID_OFF' : 'ACTIVE',
+            };
+          })
+        );
+      } else {
+        alert(res.error || 'Error al registrar el pago');
+      }
     });
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('¿Eliminar esta deuda?')) return;
+    if (!confirm('¿Eliminar esta obligación?')) return;
     setDebts(prev => prev.filter(d => d.id !== id));
     startTransition(() => void deleteDebt(id));
   };
 
   return (
-    <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ animation: 'fadeInUp 0.3s ease-out' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Gestión de Deudas & Préstamos</h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-            Supervisa tus pasivos financieros y optimiza tu pago con el simulador de amortización.
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Centro de Obligaciones Financieras
+          </h2>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Controla, prioriza y planifica tus pagos con amortización inteligente.
           </p>
         </div>
+
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {activeDebts.length > 1 && (
-            <button className="btn btn-secondary" onClick={() => setShowStrategy(!showStrategy)}>
-              <Zap size={16} color="var(--warning-400)" />
-              <span>{showStrategy ? 'Ocultar Comparador' : 'Comparar Estrategias'}</span>
-            </button>
+            <Button
+              variant="secondary"
+              icon={<Zap size={16} color="var(--warning-500)" />}
+              onClick={() => setShowStrategy(!showStrategy)}
+            >
+              {showStrategy ? 'Ocultar Comparador' : 'Comparar Estrategias'}
+            </Button>
           )}
-          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? <X size={16} /> : <Plus size={16} />}
-            <span>{showForm ? 'Cancelar' : 'Nueva Obligación'}</span>
-          </button>
+          <Button
+            variant="primary"
+            icon={<Plus size={18} />}
+            onClick={() => setShowModal(true)}
+          >
+            Registrar Nueva Obligación
+          </Button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingDown size={18} color="var(--danger-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Saldo Total Deuda</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--danger-400)' }}>{fmt(totalDebt)}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Capital pendiente acumulado</span>
-        </div>
+      {/* Level 1: KPIs Hierarchy */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+        <StatCard
+          title="Deuda Total Pendiente"
+          value={fmt(totalDebt)}
+          subtitle="Capital acumulado por liquidar"
+          icon={<CreditCard size={18} color="var(--danger-500)" />}
+          iconBg="rgba(239, 68, 68, 0.12)"
+          badge={{ text: `${activeDebts.length} activas`, variant: totalDebt > 0 ? 'danger' : 'success' }}
+        />
 
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar size={18} color="var(--warning-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Cuota Mensual Total</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--warning-400)' }}>{fmt(totalMonthly)}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Comprometido cada 30 días</span>
-        </div>
+        <StatCard
+          title="Cuotas Mensuales"
+          value={fmt(totalMonthly)}
+          subtitle="Comprometido en próximos 30 días"
+          icon={<Calendar size={18} color="var(--warning-500)" />}
+          iconBg="rgba(245, 158, 11, 0.12)"
+          badge={{ text: 'Mensual', variant: 'warning' }}
+        />
 
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <CreditCard size={18} color="var(--primary-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>Obligaciones Activas</span>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{activeDebts.length}</div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>{paidDebts.length} cancelada{paidDebts.length !== 1 ? 's' : ''} históricas</span>
-        </div>
+        {nextCriticalDebt ? (
+          <StatCard
+            title="Próximo Vencimiento"
+            value={fmt(nextCriticalDebt.monthlyPayment)}
+            subtitle={`${nextCriticalDebt.name} · ${nextCriticalDebt.nextDueDate ? new Date(nextCriticalDebt.nextDueDate).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' }) : ''}`}
+            icon={<Zap size={18} color="var(--danger-500)" />}
+            iconBg="rgba(239, 68, 68, 0.15)"
+            critical={daysUntilNextDue !== null && daysUntilNextDue <= 5}
+            badge={{
+              text: daysUntilNextDue !== null && daysUntilNextDue <= 0 ? '¡VENCE HOY!' : `Vence en ${daysUntilNextDue} días`,
+              variant: daysUntilNextDue !== null && daysUntilNextDue <= 5 ? 'danger' : 'warning',
+            }}
+          />
+        ) : (
+          <StatCard
+            title="Próximo Vencimiento"
+            value="Al día"
+            subtitle="Sin cuotas pendientes inmediatas"
+            icon={<CheckCircle2 size={18} color="var(--success-500)" />}
+            iconBg="rgba(16, 185, 129, 0.12)"
+            badge={{ text: 'Al día', variant: 'success' }}
+          />
+        )}
       </div>
 
-      {/* Strategy Comparison Box */}
+      {/* Level 3: Strategy Comparator Drawer / Box */}
       {showStrategy && strategy && (
-        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', animation: 'fadeInDown 0.3s ease-out', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Zap size={20} color="var(--warning-400)" />
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>Simulador de Métodos de Pago</h3>
+        <div
+          className="glass-card"
+          style={{
+            padding: '1.75rem',
+            marginBottom: '1.75rem',
+            borderRadius: 'var(--radius-2xl)',
+            border: '1px solid rgba(37, 99, 235, 0.25)',
+            animation: 'fadeInUp 0.25s ease-out',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.5rem' }}>
+            <Zap size={22} color="var(--warning-500)" />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Simulador de Aceleración de Deudas</h3>
           </div>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-            Compara pagar primero las deudas con mayor interés (Avalancha) frente a liquidar primero las de menor monto (Bola de Nieve).
+            Compara pagar primero las deudas más costosas (Avalancha) frente a liquidar deudas pequeñas para flujo rápido (Bola de Nieve).
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-            <div style={{
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-xl)',
-              background: strategy.recommendation === 'avalanche' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-              border: `1px solid ${strategy.recommendation === 'avalanche' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(148, 163, 184, 0.1)'}`,
-            }}>
-              <div className="flex items-center justify-between mb-2">
-                <span style={{ fontWeight: 700, color: 'var(--primary-400)', fontSize: '1rem' }}>Método Avalancha</span>
+            <div
+              style={{
+                padding: '1.25rem',
+                borderRadius: 'var(--radius-xl)',
+                background: strategy.recommendation === 'avalanche' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-secondary)',
+                border: `1.5px solid ${strategy.recommendation === 'avalanche' ? 'var(--brand-navy-500)' : 'var(--glass-border)'}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 800, color: 'var(--brand-navy-600)' }}>Método Avalancha</span>
                 {strategy.recommendation === 'avalanche' && (
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', background: 'var(--primary-500)', color: 'white', fontWeight: 700 }}>
-                    Recomendado
-                  </span>
+                  <Badge variant="primary" size="sm">Más Ahorro</Badge>
                 )}
               </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                Prioriza las tasas de interés más caras para minimizar el costo total.
-              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                Ataca primero la tasa de interés más alta (TNA).
+              </p>
               <div style={{ fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
-                Interés total proyectado: <strong style={{ color: 'var(--danger-400)' }}>{fmt(strategy.avalanche.totalInterest)}</strong>
+                Interés total: <strong style={{ color: 'var(--danger-500)' }}>{fmt(strategy.avalanche.totalInterest)}</strong>
               </div>
               <div style={{ fontSize: 'var(--text-sm)' }}>
-                Tiempo estimado de salida: <strong>{strategy.avalanche.totalMonths} meses</strong>
+                Tiempo estimado: <strong>{strategy.avalanche.totalMonths} meses</strong>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.75rem', borderTop: '1px solid rgba(148,163,184,0.1)', paddingTop: '0.5rem' }}>
-                Orden sugerido: {strategy.avalanche.debts.map(d => d.name).join(' → ')}
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.75rem', borderTop: '1px solid var(--glass-border)', paddingTop: '0.5rem' }}>
+                Orden: {strategy.avalanche.debts.map(d => d.name).join(' → ')}
               </div>
             </div>
 
-            <div style={{
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-xl)',
-              background: strategy.recommendation === 'snowball' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-              border: `1px solid ${strategy.recommendation === 'snowball' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.1)'}`,
-            }}>
-              <div className="flex items-center justify-between mb-2">
-                <span style={{ fontWeight: 700, color: 'var(--success-400)', fontSize: '1rem' }}>Método Bola de Nieve</span>
+            <div
+              style={{
+                padding: '1.25rem',
+                borderRadius: 'var(--radius-xl)',
+                background: strategy.recommendation === 'snowball' ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-secondary)',
+                border: `1.5px solid ${strategy.recommendation === 'snowball' ? 'var(--success-500)' : 'var(--glass-border)'}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 800, color: 'var(--success-600)' }}>Método Bola de Nieve</span>
                 {strategy.recommendation === 'snowball' && (
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', background: 'var(--success-500)', color: 'white', fontWeight: 700 }}>
-                    Recomendado
-                  </span>
+                  <Badge variant="success" size="sm">Motivación Rápida</Badge>
                 )}
               </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                Elimina primero los saldos menores para liberar cuotas rápido e impulsar tu motivación.
-              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                Elimina saldos pequeños primero para liberar flujo.
+              </p>
               <div style={{ fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
-                Interés total proyectado: <strong style={{ color: 'var(--danger-400)' }}>{fmt(strategy.snowball.totalInterest)}</strong>
+                Interés total: <strong style={{ color: 'var(--danger-500)' }}>{fmt(strategy.snowball.totalInterest)}</strong>
               </div>
               <div style={{ fontSize: 'var(--text-sm)' }}>
-                Tiempo estimado de salida: <strong>{strategy.snowball.totalMonths} meses</strong>
+                Tiempo estimado: <strong>{strategy.snowball.totalMonths} meses</strong>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.75rem', borderTop: '1px solid rgba(148,163,184,0.1)', paddingTop: '0.5rem' }}>
-                Orden sugerido: {strategy.snowball.debts.map(d => d.name).join(' → ')}
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.75rem', borderTop: '1px solid var(--glass-border)', paddingTop: '0.5rem' }}>
+                Orden: {strategy.snowball.debts.map(d => d.name).join(' → ')}
               </div>
             </div>
           </div>
 
           {strategy.interestSaved > 0 && (
             <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-lg)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', textAlign: 'center' }}>
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--success-400)', fontWeight: 700 }}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--success-600)', fontWeight: 700 }}>
                 💡 Ahorras aproximadamente {fmt(strategy.interestSaved)} en intereses siguiendo el método {strategy.recommendation === 'avalanche' ? 'Avalancha' : 'Bola de Nieve'}.
               </span>
             </div>
           )}
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: '0.75rem' }}>{strategy.recommendationReason}</p>
         </div>
       )}
 
-      {/* Add Form */}
-      {showForm && (
-        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', animation: 'fadeInDown 0.3s ease-out' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <Plus size={18} color="var(--primary-400)" />
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>Registrar Nueva Obligación</h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div className="input-group">
-              <label className="input-label">Descripción de la deuda *</label>
-              <input className="input" placeholder="Ej: Visa Banco Pichincha" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Entidad acreedora</label>
-              <input className="input" placeholder="Ej: Banco Guayaquil / IESS" value={form.creditor} onChange={e => setForm(p => ({ ...p, creditor: e.target.value }))} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Tipo de obligación</label>
-              <select className="select" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                {Object.entries(DEBT_TYPE_META).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Saldo actual adeudado ($) *</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.totalOwed || ''} onChange={e => setForm(p => ({ ...p, totalOwed: parseFloat(e.target.value) || 0 }))} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Cuota mensual ($) *</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><DollarSign size={16} /></span>
-                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.monthlyPayment || ''} onChange={e => setForm(p => ({ ...p, monthlyPayment: parseFloat(e.target.value) || 0 }))} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Tasa de interés anual (%)</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><Percent size={16} /></span>
-                <input className="input" type="number" min="0" step="0.01" placeholder="Ej: 16.06" value={form.interestRate || ''} onChange={e => setForm(p => ({ ...p, interestRate: parseFloat(e.target.value) || 0 }))} />
-              </div>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Próximo día de vencimiento</label>
-              <input className="input" type="date" value={form.nextDueDate} onChange={e => setForm(p => ({ ...p, nextDueDate: e.target.value }))} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Cuotas restantes (plazo)</label>
-              <div className="input-wrapper">
-                <span className="input-icon"><Calendar size={16} /></span>
-                <input className="input" type="number" min="0" placeholder="Ej: 12" value={form.remainingInstallments || ''} onChange={e => setForm(p => ({ ...p, remainingInstallments: parseInt(e.target.value) || 0 }))} />
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-            <button className={`btn btn-primary ${isPending ? 'btn-loading' : ''}`} onClick={handleAdd} disabled={isPending}>
-              <Check size={16} />
-              <span>Guardar Obligación</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Debt List */}
-      {activeDebts.length === 0 && !showForm ? (
-        <div className="glass-card" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
-          <CheckCircle2 size={48} color="var(--success-400)" style={{ margin: '0 auto 1rem', opacity: 0.8 }} />
-          <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>¡Sin deudas activas registradas!</h3>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-            Mantienes tus finanzas libres de pasivos o aún no has registrado obligaciones.
-          </p>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            <Plus size={16} />
-            <span>Registrar primera obligación</span>
-          </button>
-        </div>
+      {/* Level 4: Active Debt Cards */}
+      {activeDebts.length === 0 ? (
+        <EmptyState
+          icon={<CheckCircle2 size={32} color="var(--success-500)" />}
+          title="¡No tienes obligaciones pendientes registradas!"
+          description="Tus pasivos están en orden. Puedes registrar créditos bancarios, tarjetas o compromisos para monitorear sus fechas de corte."
+          actionText="Registrar nueva obligación"
+          onAction={() => setShowModal(true)}
+          actionIcon={<Plus size={16} />}
+        />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {activeDebts.map(d => {
-            const meta = DEBT_TYPE_META[d.type] || DEBT_TYPE_META.OTHER;
-            const Icon = meta.icon;
-            const progress = d.originalAmount ? Math.round(((d.originalAmount - d.totalOwed) / d.originalAmount) * 100) : 0;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {activeDebts.map(debt => {
+            const opt = DEBT_TYPE_OPTIONS.find(o => o.value === debt.type) || DEBT_TYPE_OPTIONS[0];
+            const original = debt.originalAmount || debt.totalOwed;
+            const progress = original > 0 ? Math.round(((original - debt.totalOwed) / original) * 100) : 0;
+            const isDueSoon = debt.nextDueDate && (new Date(debt.nextDueDate).getTime() - new Date().setHours(0,0,0,0)) <= 5 * 24 * 60 * 60 * 1000;
+
             return (
-              <div key={d.id} className="glass-card" style={{ padding: '1.25rem', borderLeft: `3px solid ${meta.color}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div className="flex items-center gap-3">
-                    <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: `${meta.color}18`, color: meta.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon size={20} />
+              <div
+                key={debt.id}
+                className="card"
+                style={{
+                  padding: '1.25rem 1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  borderLeft: `4px solid ${isDueSoon ? 'var(--danger-500)' : 'var(--brand-navy-500)'}`,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 'var(--radius-xl)',
+                        background: 'var(--bg-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {opt.icon || <CreditCard size={20} />}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{d.name}</span>
-                        {d.interestRate > 0 && (
-                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.12)', color: 'var(--danger-400)', fontWeight: 700 }}>
-                            {d.interestRate}% TNA
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                          {debt.name}
+                        </span>
+                        {isDueSoon ? (
+                          <Badge variant="danger" size="sm" dot>Próximo a Vencer</Badge>
+                        ) : (
+                          <Badge variant="primary" size="sm" dot>Activa</Badge>
+                        )}
+                        {debt.interestRate > 0 && (
+                          <Badge variant="neutral" size="sm">
+                            {debt.interestRate}% TNA
+                          </Badge>
                         )}
                       </div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                        {d.creditor ? `${d.creditor} · ` : ''}{meta.label}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        {debt.creditor ? `${debt.creditor} · ` : ''}{opt.label}
                       </div>
                     </div>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.15rem', color: 'var(--danger-400)' }}>{fmt(d.totalOwed)}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Cuota: {fmt(d.monthlyPayment)}/mes</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Saldo Pendiente
+                    </div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--danger-500)' }}>
+                      {fmt(debt.totalOwed)}
+                    </div>
                   </div>
                 </div>
 
-                {progress > 0 && (
-                  <div style={{ marginBottom: '0.85rem' }}>
-                    <div className="flex justify-between" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-                      <span>Progreso de amortización</span>
-                      <span>{progress}% cancelado</span>
-                    </div>
-                    <div className="progress-bar" style={{ height: 6 }}>
-                      <div className="progress-fill progress-fill-success" style={{ width: `${progress}%` }} />
-                    </div>
-                  </div>
-                )}
+                {/* Progress bar */}
+                <div>
+                  <ProgressBar
+                    value={progress}
+                    label="Amortización acumulada"
+                    showPercent
+                    variant="success"
+                    height={6}
+                  />
+                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid rgba(148, 163, 184, 0.08)', paddingTop: '0.75rem' }}>
-                  <div style={{ display: 'flex', gap: '1.25rem', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
-                    {d.nextDueDate && (
-                      <span className="flex items-center gap-1">
-                        <Calendar size={13} />
-                        <span>Vence: {new Date(d.nextDueDate).toLocaleDateString('es-EC')}</span>
-                      </span>
+                {/* Bottom details & quick actions */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid var(--glass-border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                    <div>
+                      Cuota mensual: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{fmt(debt.monthlyPayment)}</strong>
+                    </div>
+                    {debt.nextDueDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Calendar size={14} color="var(--text-tertiary)" />
+                        <span>Vence: <strong>{new Date(debt.nextDueDate).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</strong></span>
+                      </div>
                     )}
-                    {d.remainingInstallments && (
-                      <span>{d.remainingInstallments} cuota{d.remainingInstallments !== 1 ? 's' : ''} restantes</span>
+                    {debt.remainingInstallments && (
+                      <span>Plazo: <strong>{debt.remainingInstallments} cuotas</strong></span>
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className={`btn btn-primary btn-sm ${isPending ? 'btn-loading' : ''}`}
-                      onClick={() => handlePay(d)}
-                      disabled={isPending}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<Check size={14} />}
+                      onClick={() => handlePay(debt)}
+                      isLoading={isPending}
                     >
-                      <Check size={14} />
-                      <span>Registrar cuota</span>
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleDelete(d.id)}
-                      title="Eliminar deuda"
-                      style={{ color: 'var(--danger-400)', padding: '0.35rem' }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                      Registrar Pago de Cuota
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<Trash2 size={15} />}
+                      onClick={() => handleDelete(debt.id)}
+                      title="Eliminar registro"
+                      style={{ color: 'var(--danger-500)', padding: '0.35rem' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -389,27 +496,194 @@ export default function DeudasClient({ initialDebts }: { initialDebts: Debt[] })
         </div>
       )}
 
-      {/* Paid Debts Historic */}
+      {/* Level 5: Historial de deudas canceladas */}
       {paidDebts.length > 0 && (
         <div style={{ marginTop: '2.5rem' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 size={16} color="var(--success-400)" />
-            <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Deudas Canceladas ({paidDebts.length})
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <CheckCircle2 size={18} color="var(--success-500)" />
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Historial de Obligaciones Liquidadas ({paidDebts.length})
             </h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {paidDebts.map(d => (
-              <div key={d.id} className="glass-card" style={{ padding: '0.85rem 1.25rem', opacity: 0.55, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{d.name}</span>
-                <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--success-400)', fontWeight: 700 }}>
-                  Totalmente Pagada 🎉
-                </span>
+            {paidDebts.map(debt => (
+              <div
+                key={debt.id}
+                className="card"
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  opacity: 0.65,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <CheckCircle2 size={16} color="var(--success-500)" />
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{debt.name}</span>
+                  {debt.creditor && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>({debt.creditor})</span>}
+                </div>
+                <Badge variant="success" size="sm">Totalmente Cancelada 🎉</Badge>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Modal Multi-Step Form */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Registrar Nueva Obligación"
+        subtitle="Ingresa los detalles para cálculo de amortización y alertas de vencimiento"
+        icon={<Sparkles size={20} />}
+        maxWidth="lg"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Section 1: Tipo y Entidad */}
+          <div>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+              1. Identificación de la Deuda
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
+              <div className="input-group">
+                <label className="input-label">Descripción de la deuda *</label>
+                <input
+                  className="input"
+                  placeholder="Ej: Tarjeta Visa Signature / Crédito Auto"
+                  value={form.name}
+                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Entidad acreedora</label>
+                <input
+                  className="input"
+                  placeholder="Ej: Banco Pichincha / BIESS / Cooperativa"
+                  value={form.creditor}
+                  onChange={e => setForm(p => ({ ...p, creditor: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Combobox
+                  label="Tipo de obligación financiera"
+                  options={DEBT_TYPE_OPTIONS}
+                  value={form.type}
+                  onChange={val => setForm(p => ({ ...p, type: val }))}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Montos y Tasas */}
+          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+              2. Datos Financieros y Cuota
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
+              <div className="input-group">
+                <label className="input-label">Saldo total pendiente ($) *</label>
+                <div className="input-wrapper">
+                  <span className="input-icon"><DollarSign size={16} /></span>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.totalOwed || ''}
+                    onChange={e => setForm(p => ({ ...p, totalOwed: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Cuota mensual requerida ($) *</label>
+                <div className="input-wrapper">
+                  <span className="input-icon"><DollarSign size={16} /></span>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.monthlyPayment || ''}
+                    onChange={e => setForm(p => ({ ...p, monthlyPayment: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Tasa de interés anual (TNA %)</label>
+                <div className="input-wrapper">
+                  <span className="input-icon"><Percent size={16} /></span>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Ej: 16.06"
+                    value={form.interestRate || ''}
+                    onChange={e => setForm(p => ({ ...p, interestRate: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Plazos y Vencimiento */}
+          <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+              3. Condiciones y Vencimiento
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
+              <div className="input-group">
+                <label className="input-label">Próxima fecha de corte o pago</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={form.nextDueDate}
+                  onChange={e => setForm(p => ({ ...p, nextDueDate: e.target.value }))}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Cuotas restantes (meses)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  placeholder="Ej: 12"
+                  value={form.remainingInstallments || ''}
+                  onChange={e => setForm(p => ({ ...p, remainingInstallments: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Modal Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Check size={16} />}
+              onClick={handleAdd}
+              isLoading={isPending}
+              disabled={!form.name || form.totalOwed <= 0 || form.monthlyPayment <= 0}
+            >
+              Guardar Obligación
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,0 +1,160 @@
+/* Report Styles and Print Media Optimization for PDF Export */
+
+.reportContainer {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-sm);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.reportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--glass-border);
+  margin-bottom: 2rem;
+}
+
+.brandTitle {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary-600);
+  letter-spacing: -0.02em;
+  margin: 0 0 0.25rem 0;
+}
+
+.brandSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.reportMetadata {
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 1.75rem 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-left: 4px solid var(--primary-500);
+  padding-left: 0.65rem;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpiBox {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+}
+
+.kpiLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.kpiValue {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.reportTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.reportTable th {
+  background: var(--bg-secondary);
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.reportTable td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+
+.reportFooter {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* Print Styles for Pixel-Perfect PDF Export */
+@media print {
+  :global(body) {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  :global(aside),
+  :global(header),
+  .noPrint {
+    display: none !important;
+  }
+
+  :global(main) {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .reportContainer {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .reportTable th {
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+  }
+
+  .kpiBox {
+    border: 1px solid #E2E8F0 !important;
+    background: #F8FAFC !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

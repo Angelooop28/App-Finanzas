@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FinanzApp — Tu Asesor Financiero Personal",
-  description: "Gestiona tu salario, deudas y gastos. Calcula tu capacidad real de ahorro, prioriza pagos y toma mejores decisiones financieras.",
-  keywords: ["finanzas personales", "presupuesto", "deudas", "ahorro", "IESS", "Ecuador"],
+  title: "Fin593 — Inteligencia Financiera Personal (Ecuador)",
+  description: "Plataforma líder en gestión de finanzas personales para Ecuador. Rol de pagos con IESS (9.45%), amortización de deudas, control de gastos y metas de ahorro en USD.",
+  keywords: ["Fin593", "finanzas personales Ecuador", "IESS", "rol de pagos", "presupuesto", "deudas", "ahorro USD"],
+  icons: {
+    icon: '/logo.jpg',
+  },
 };
 
 export default function RootLayout({
@@ -14,7 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

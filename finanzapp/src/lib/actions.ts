@@ -3,12 +3,21 @@
 /**
  * Server Actions — FinanzApp
  * All database operations centralized here.
- * Mutating actions return { success, error } for clean client handling.
+ * All mutating actions validate with Zod schemas and return { success, error }.
  */
 
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import {
+  incomeSchema,
+  deductionSchema,
+  debtSchema,
+  expenseSchema,
+  savingsGoalSchema,
+  purchaseQuerySchema,
+  profileSchema,
+} from '@/lib/validators';
 
 // ---- Types ----
 type ActionResult = { success: true } | { success: false; error: string };
@@ -23,6 +32,13 @@ async function getUserId(): Promise<string> {
 function getCurrentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Extract the first Zod error message from a safeParse result.
+ */
+function getZodError(result: { error: { issues: Array<{ message: string }> } }): string {
+  return result.error.issues[0]?.message ?? 'Datos inválidos';
 }
 
 // =============================================
@@ -72,29 +88,30 @@ export async function saveIncome(data: {
   description?: string;
 }): Promise<ActionResult> {
   try {
-    if (data.grossAmount <= 0) return { success: false, error: 'El salario bruto debe ser mayor a 0' };
-    if (!data.period || !/^\d{4}-\d{2}$/.test(data.period)) return { success: false, error: 'Período inválido' };
+    const parsed = incomeSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
+    const { grossAmount, period } = parsed.data;
 
     const existing = await prisma.income.findFirst({
-      where: { userId, period: data.period, type: 'SALARY' },
+      where: { userId, period, type: 'SALARY' },
     });
 
     if (existing) {
       await prisma.income.update({
         where: { id: existing.id },
-        data: { grossAmount: data.grossAmount, netAmount: data.netAmount },
+        data: { grossAmount, netAmount: data.netAmount },
       });
     } else {
       await prisma.income.create({
         data: {
           userId,
-          grossAmount: data.grossAmount,
+          grossAmount,
           netAmount: data.netAmount,
-          period: data.period,
+          period,
           type: 'SALARY',
-          description: data.description || 'Salario mensual',
+          description: parsed.data.description || 'Salario mensual',
         },
       });
     }
@@ -116,7 +133,8 @@ export async function addDeduction(data: {
   fixedAmount?: number;
 }): Promise<ActionResult> {
   try {
-    if (!data.name.trim()) return { success: false, error: 'El nombre es requerido' };
+    const parsed = deductionSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
     const count = await prisma.payrollDeduction.count({ where: { userId } });
@@ -124,11 +142,11 @@ export async function addDeduction(data: {
     await prisma.payrollDeduction.create({
       data: {
         userId,
-        name: data.name.trim(),
-        type: data.type as 'OTHER',
-        isPercentage: data.isPercentage,
-        percentage: data.isPercentage ? data.percentage : null,
-        fixedAmount: !data.isPercentage ? data.fixedAmount : null,
+        name: parsed.data.name.trim(),
+        type: parsed.data.type,
+        isPercentage: parsed.data.isPercentage,
+        percentage: parsed.data.isPercentage ? parsed.data.percentage : null,
+        fixedAmount: !parsed.data.isPercentage ? parsed.data.fixedAmount : null,
         isActive: true,
         sortOrder: count,
       },
@@ -182,6 +200,19 @@ export async function getDebts() {
   });
 }
 
+const VALID_DEBT_TYPES = ['CREDIT_CARD', 'PERSONAL_LOAN', 'MORTGAGE', 'INFORMAL', 'IESS_LOAN', 'CAR_LOAN', 'STUDENT_LOAN', 'OTHER'] as const;
+
+function mapDebtType(type: string): typeof VALID_DEBT_TYPES[number] {
+  if (type === 'COOPERATIVE') return 'PERSONAL_LOAN';
+  if (type === 'MORTGAGE_BIESS') return 'MORTGAGE';
+  if (type === 'SUPA') return 'INFORMAL';
+  if (type === 'RETAIL') return 'OTHER';
+  if ((VALID_DEBT_TYPES as readonly string[]).includes(type)) {
+    return type as typeof VALID_DEBT_TYPES[number];
+  }
+  return 'OTHER';
+}
+
 export async function addDebt(data: {
   name: string;
   creditor?: string;
@@ -194,24 +225,24 @@ export async function addDebt(data: {
   remainingInstallments?: number;
 }): Promise<ActionResult> {
   try {
-    if (!data.name.trim()) return { success: false, error: 'El nombre es requerido' };
-    if (data.totalOwed <= 0) return { success: false, error: 'El saldo debe ser mayor a 0' };
-    if (data.monthlyPayment <= 0) return { success: false, error: 'La cuota mensual debe ser mayor a 0' };
+    const parsed = debtSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
+    const d = parsed.data;
 
     await prisma.debt.create({
       data: {
         userId,
-        name: data.name.trim(),
-        creditor: data.creditor?.trim() || null,
-        type: data.type as 'OTHER',
-        totalOwed: data.totalOwed,
-        originalAmount: data.originalAmount || data.totalOwed,
-        monthlyPayment: data.monthlyPayment,
-        interestRate: data.interestRate,
-        nextDueDate: data.nextDueDate ? new Date(data.nextDueDate) : null,
-        remainingInstallments: data.remainingInstallments || null,
+        name: d.name.trim(),
+        creditor: d.creditor?.trim() || null,
+        type: mapDebtType(d.type),
+        totalOwed: d.totalOwed,
+        originalAmount: d.originalAmount || d.totalOwed,
+        monthlyPayment: d.monthlyPayment,
+        interestRate: d.interestRate,
+        nextDueDate: d.nextDueDate ? new Date(d.nextDueDate) : null,
+        remainingInstallments: d.remainingInstallments || null,
         status: 'ACTIVE',
       },
     });
@@ -332,22 +363,23 @@ export async function addExpense(data: {
   recurringDay?: number;
 }): Promise<ActionResult> {
   try {
-    if (data.amount <= 0) return { success: false, error: 'El monto debe ser mayor a 0' };
-    if (!data.categoryId) return { success: false, error: 'Selecciona una categoría' };
+    const parsed = expenseSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
-    const dateObj = new Date(data.date);
+    const d = parsed.data;
+    const dateObj = new Date(d.date);
     const period = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
 
     await prisma.expense.create({
       data: {
         userId,
-        categoryId: data.categoryId,
-        description: data.description?.trim() || null,
-        amount: data.amount,
+        categoryId: d.categoryId,
+        description: d.description?.trim() || null,
+        amount: d.amount,
         date: dateObj,
-        isRecurring: data.isRecurring || false,
-        recurringDay: data.recurringDay || null,
+        isRecurring: d.isRecurring || false,
+        recurringDay: d.recurringDay || null,
         period,
       },
     });
@@ -392,20 +424,21 @@ export async function addSavingsGoal(data: {
   targetMonths?: number;
 }): Promise<ActionResult> {
   try {
-    if (!data.name.trim()) return { success: false, error: 'El nombre es requerido' };
-    if (data.targetAmount <= 0) return { success: false, error: 'La meta debe ser mayor a 0' };
+    const parsed = savingsGoalSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
+    const d = parsed.data;
 
     await prisma.savingsGoal.create({
       data: {
         userId,
-        name: data.name.trim(),
-        type: data.type as 'CUSTOM',
-        targetAmount: data.targetAmount,
-        currentAmount: data.currentAmount || 0,
-        monthlyContribution: data.monthlyContribution || null,
-        targetMonths: data.targetMonths || null,
+        name: d.name.trim(),
+        type: d.type,
+        targetAmount: d.targetAmount,
+        currentAmount: d.currentAmount || 0,
+        monthlyContribution: d.monthlyContribution || null,
+        targetMonths: d.targetMonths || null,
         status: 'ACTIVE',
       },
     });
@@ -458,13 +491,16 @@ export async function savePurchaseQuery(data: {
   surplusAtTime: number;
 }): Promise<ActionResult> {
   try {
+    const parsed = purchaseQuerySchema.safeParse({ description: data.description, amount: data.amount });
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
+
     const userId = await getUserId();
 
     await prisma.purchaseQuery.create({
       data: {
         userId,
-        description: data.description.trim(),
-        amount: data.amount,
+        description: parsed.data.description.trim(),
+        amount: parsed.data.amount,
         recommendation: data.recommendation as 'YES',
         justification: data.justification,
         surplusAtTime: data.surplusAtTime,
@@ -505,19 +541,20 @@ export async function updateProfile(data: {
   payrollCutoffDay?: number;
 }): Promise<ActionResult> {
   try {
-    if (data.name !== undefined && !data.name.trim()) return { success: false, error: 'El nombre es requerido' };
-    if (data.age !== undefined && (data.age < 15 || data.age > 120)) return { success: false, error: 'La edad debe estar entre 15 y 120' };
-    if (data.payrollCutoffDay !== undefined && (data.payrollCutoffDay < 1 || data.payrollCutoffDay > 31)) return { success: false, error: 'El día de corte debe estar entre 1 y 31' };
+    const parsed = profileSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: getZodError(parsed) };
 
     const userId = await getUserId();
+    const d = parsed.data;
+
     await prisma.user.update({
       where: { id: userId },
       data: {
-        name: data.name?.trim(),
-        age: data.age,
-        city: data.city?.trim(),
-        payFrequency: data.payFrequency as 'MONTHLY' | undefined,
-        payrollCutoffDay: data.payrollCutoffDay,
+        name: d.name?.trim(),
+        age: d.age,
+        city: d.city?.trim(),
+        payFrequency: d.payFrequency as 'MONTHLY' | undefined,
+        payrollCutoffDay: d.payrollCutoffDay,
       },
     });
     revalidatePath('/dashboard');

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ThemeToggle from '@/components/ThemeToggle';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 import styles from '../auth.module.css';
 
@@ -69,7 +70,7 @@ export default function RegistroPage() {
       setSuccess(true);
       setTimeout(() => {
         router.push('/login');
-      }, 2000);
+      }, 1800);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -80,6 +81,9 @@ export default function RegistroPage() {
   if (success) {
     return (
       <div className={styles.authPage}>
+        <div className={styles.topControls}>
+          <ThemeToggle />
+        </div>
         <div className="ambient-glow">
           <div className="ambient-glow-orb-1" />
           <div className="ambient-glow-orb-2" />
@@ -91,9 +95,9 @@ export default function RegistroPage() {
                 <CheckCircle2 size={32} color="white" />
               </div>
             </div>
-            <h1 className={styles.authTitle}>¡Cuenta creada!</h1>
+            <h1 className={styles.authTitle}>¡Bienvenido a Fin593!</h1>
             <p className={styles.authSubtitle}>
-              Tu cuenta ha sido creada exitosamente. Te estamos redirigiendo al inicio de sesión...
+              Tu cuenta ha sido creada exitosamente. Redirigiendo al inicio de sesión...
             </p>
           </div>
           <div className={styles.authCard}>
@@ -109,6 +113,14 @@ export default function RegistroPage() {
 
   return (
     <div className={styles.authPage}>
+      {/* Top Controls */}
+      <div className={styles.topControls}>
+        <ThemeToggle />
+        <Link href="/" className="btn btn-secondary btn-sm">
+          Inicio
+        </Link>
+      </div>
+
       <div className="ambient-glow">
         <div className="ambient-glow-orb-1" />
         <div className="ambient-glow-orb-2" />
@@ -121,9 +133,9 @@ export default function RegistroPage() {
               <ShieldCheck size={28} className={styles.shieldIcon} />
             </div>
           </div>
-          <h1 className={styles.authTitle}>Crea tu cuenta</h1>
+          <h1 className={styles.authTitle}>Crear Cuenta Fin593</h1>
           <p className={styles.authSubtitle}>
-            Toma el control de tus ingresos, fondo de ahorro y deudas en Ecuador.
+            Toma el control de tu salario neto, IESS (9.45%) y deudas en Ecuador.
           </p>
         </div>
 
@@ -147,7 +159,7 @@ export default function RegistroPage() {
                 <input
                   id="register-name"
                   type="text"
-                  className={`input ${fieldErrors.name ? 'input-error' : ''}`}
+                  className="input"
                   placeholder="Juan Pérez"
                   value={formData.name}
                   onChange={(e) => updateField('name', e.target.value)}
@@ -156,7 +168,7 @@ export default function RegistroPage() {
                 />
               </div>
               {fieldErrors.name && (
-                <span className="input-error-message">{fieldErrors.name[0]}</span>
+                <span style={{ color: 'var(--danger-600)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{fieldErrors.name[0]}</span>
               )}
             </div>
 
@@ -171,7 +183,7 @@ export default function RegistroPage() {
                 <input
                   id="register-email"
                   type="email"
-                  className={`input ${fieldErrors.email ? 'input-error' : ''}`}
+                  className="input"
                   placeholder="nombre@correo.com"
                   value={formData.email}
                   onChange={(e) => updateField('email', e.target.value)}
@@ -180,7 +192,7 @@ export default function RegistroPage() {
                 />
               </div>
               {fieldErrors.email && (
-                <span className="input-error-message">{fieldErrors.email[0]}</span>
+                <span style={{ color: 'var(--danger-600)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{fieldErrors.email[0]}</span>
               )}
             </div>
 
@@ -195,7 +207,7 @@ export default function RegistroPage() {
                 <input
                   id="register-password"
                   type={showPassword ? 'text' : 'password'}
-                  className={`input ${fieldErrors.password ? 'input-error' : ''}`}
+                  className="input"
                   placeholder="Mínimo 8 caracteres"
                   value={formData.password}
                   onChange={(e) => updateField('password', e.target.value)}
@@ -213,28 +225,29 @@ export default function RegistroPage() {
                 </button>
               </div>
               {formData.password && (
-                <div className={styles.passwordStrength}>
+                <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
                   {[1, 2, 3, 4].map(level => (
                     <div
                       key={level}
-                      className={`${styles.passwordStrengthBar} ${
-                        passwordStrength >= level
+                      style={{
+                        flex: 1,
+                        height: 3,
+                        borderRadius: '4px',
+                        background: passwordStrength >= level
                           ? passwordStrength <= 1
-                            ? styles.active
+                            ? 'var(--danger-500)'
                             : passwordStrength <= 2
-                              ? styles.medium
-                              : styles.strong
-                          : ''
-                      }`}
+                              ? 'var(--warning-500)'
+                              : 'var(--success-500)'
+                          : 'var(--bg-tertiary)',
+                        transition: 'background 0.2s',
+                      }}
                     />
                   ))}
                 </div>
               )}
-              <span className="input-hint">
-                Mínimo 8 caracteres, al menos una mayúscula y un número
-              </span>
               {fieldErrors.password && (
-                <span className="input-error-message">{fieldErrors.password[0]}</span>
+                <span style={{ color: 'var(--danger-600)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{fieldErrors.password[0]}</span>
               )}
             </div>
 
@@ -249,7 +262,7 @@ export default function RegistroPage() {
                 <input
                   id="register-confirm"
                   type="password"
-                  className={`input ${fieldErrors.confirmPassword ? 'input-error' : ''}`}
+                  className="input"
                   placeholder="Repite tu contraseña"
                   value={formData.confirmPassword}
                   onChange={(e) => updateField('confirmPassword', e.target.value)}
@@ -258,7 +271,7 @@ export default function RegistroPage() {
                 />
               </div>
               {fieldErrors.confirmPassword && (
-                <span className="input-error-message">{fieldErrors.confirmPassword[0]}</span>
+                <span style={{ color: 'var(--danger-600)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{fieldErrors.confirmPassword[0]}</span>
               )}
             </div>
 
@@ -275,10 +288,14 @@ export default function RegistroPage() {
 
           <div className={styles.authFooter}>
             ¿Ya tienes cuenta?{' '}
-            <Link href="/login">Inicia sesión</Link>
+            <Link href="/login">Inicia sesión en Fin593</Link>
           </div>
         </div>
       </div>
+
+      <footer className={styles.authLegalFooter}>
+        © 2026 Anedcode S.A. Todos los derechos reservados. - Fin593 es una marca registrada en Ecuador.
+      </footer>
     </div>
   );
 }
