@@ -40,7 +40,7 @@ function getCurrentPeriod(): string {
 function getZodError(result: { error: { issues: Array<{ message: string }> } }): string {
   const issue = result.error.issues[0];
   if (!issue) return 'Datos inválidos';
-  let msg = issue.message;
+  const msg = issue.message;
 
   if (msg.includes('Too small: expected number to be >=')) {
     const val = msg.split('>=')[1]?.trim() || '1';

@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { incomeSchema, debtSchema, adminCreateUserSchema, savingsGoalSchema } from '../validators';
+import {
+  incomeSchema,
+  debtSchema,
+  adminCreateUserSchema,
+  savingsGoalSchema,
+  passwordResetRequestSchema,
+  otpVerifySchema,
+  newPasswordSchema,
+  changePasswordSchema,
+} from '../validators';
+import { buildResetPasswordUrl } from '../email';
 
 describe('Zod Validators', () => {
   it('should validate correct income data', () => {
@@ -62,5 +72,58 @@ describe('Zod Validators', () => {
     if (result.success) {
       expect(result.data.targetMonths).toBeUndefined();
     }
+  });
+
+  it('should validate password reset request, 6-digit OTP, and robust new password schemas', () => {
+    expect(passwordResetRequestSchema.safeParse({ email: 'user@fin593.ec' }).success).toBe(true);
+    expect(passwordResetRequestSchema.safeParse({ email: 'not-an-email' }).success).toBe(false);
+
+    expect(otpVerifySchema.safeParse({ email: 'user@fin593.ec', code: '123456' }).success).toBe(true);
+    expect(otpVerifySchema.safeParse({ email: 'user@fin593.ec', code: '12345a' }).success).toBe(false);
+    expect(otpVerifySchema.safeParse({ email: 'user@fin593.ec', code: '1234' }).success).toBe(false);
+
+    // Valid new password with 8+ chars, uppercase, lowercase, number, and matching confirm
+    expect(
+      newPasswordSchema.safeParse({
+        email: 'user@fin593.ec',
+        code: '654321',
+        newPassword: 'NuevaPassword2026',
+        confirmPassword: 'NuevaPassword2026',
+      }).success
+    ).toBe(true);
+
+    // Reject weak password (missing uppercase or number)
+    expect(
+      newPasswordSchema.safeParse({
+        email: 'user@fin593.ec',
+        code: '654321',
+        newPassword: 'solominusculas',
+        confirmPassword: 'solominusculas',
+      }).success
+    ).toBe(false);
+
+    // Reject mismatched confirmPassword
+    expect(
+      newPasswordSchema.safeParse({
+        email: 'user@fin593.ec',
+        code: '654321',
+        newPassword: 'NuevaPassword2026',
+        confirmPassword: 'OtraPassword2026',
+      }).success
+    ).toBe(false);
+
+    // Reject changePassword when newPassword equals currentPassword
+    expect(
+      changePasswordSchema.safeParse({
+        currentPassword: 'SamePassword123',
+        newPassword: 'SamePassword123',
+        confirmPassword: 'SamePassword123',
+      }).success
+    ).toBe(false);
+  });
+
+  it('should build a valid password reset link with email and 6-digit code', () => {
+    const url = buildResetPasswordUrl('Cliente@Correo.com', '482910', 'https://fin593.ec/');
+    expect(url).toBe('https://fin593.ec/recuperar-password?email=cliente%40correo.com&code=482910');
   });
 });

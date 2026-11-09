@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { updateProfile } from '@/lib/actions';
+import { changeUserPassword } from '@/lib/actions/password-reset';
 import { useTheme } from '@/components/ThemeProvider';
 import {
   User,
@@ -12,6 +14,8 @@ import {
   Sun,
   Moon,
   Sparkles,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
@@ -46,6 +50,31 @@ export default function PerfilClient({ user }: { user: UserData }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+
+  const [pwdForm, setPwdForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [pwdMessage, setPwdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isPwdPending, startPwdTransition] = useTransition();
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdMessage(null);
+    startPwdTransition(async () => {
+      const res = await changeUserPassword(pwdForm);
+      if (res.success) {
+        setPwdMessage({
+          type: 'success',
+          text: res.message || 'Contraseña anterior eliminada y nueva contraseña guardada.',
+        });
+        setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setPwdMessage({ type: 'error', text: res.error });
+      }
+    });
+  };
 
   const handleSave = () => {
     setError('');
@@ -280,6 +309,100 @@ export default function PerfilClient({ user }: { user: UserData }) {
         >
           {saved ? '¡Cambios Guardados!' : 'Guardar Cambios'}
         </Button>
+      </div>
+
+      {/* Password & Security Card */}
+      <div className="glass-card" style={{ padding: '1.75rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Lock size={18} color="var(--accent-500)" />
+            <h3 style={{ fontWeight: 700, fontSize: 'var(--text-base)', margin: 0 }}>
+              Seguridad y Contraseña
+            </h3>
+          </div>
+          <Link
+            href={`/recuperar-password?email=${encodeURIComponent(user.email)}`}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem' }}
+          >
+            <KeyRound size={14} />
+            <span>Recuperar mediante código al correo</span>
+          </Link>
+        </div>
+
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+          Reemplaza tu contraseña actual por una nueva (la anterior quedará eliminada inmediatamente), o solicita un enlace y código de 6 dígitos a tu correo registrado ({user.email}).
+        </p>
+
+        <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Input
+            label="Contraseña Actual (se eliminará al guardar)"
+            type="password"
+            placeholder="Ingresa tu contraseña actual"
+            value={pwdForm.currentPassword}
+            onChange={(e) => setPwdForm((p) => ({ ...p, currentPassword: e.target.value }))}
+            required
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <Input
+              label="Nueva Contraseña"
+              type="password"
+              placeholder="Mín. 8 caracteres, mayúscula y número"
+              value={pwdForm.newPassword}
+              onChange={(e) => setPwdForm((p) => ({ ...p, newPassword: e.target.value }))}
+              required
+            />
+            <Input
+              label="Confirmar Nueva Contraseña"
+              type="password"
+              placeholder="Repite la nueva contraseña"
+              value={pwdForm.confirmPassword}
+              onChange={(e) => setPwdForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+              required
+            />
+          </div>
+
+          {pwdMessage && (
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-lg)',
+                background:
+                  pwdMessage.type === 'success'
+                    ? 'rgba(16, 185, 129, 0.1)'
+                    : 'rgba(239, 68, 68, 0.08)',
+                border: `1px solid ${
+                  pwdMessage.type === 'success'
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : 'rgba(239, 68, 68, 0.25)'
+                }`,
+                color:
+                  pwdMessage.type === 'success'
+                    ? 'var(--success-600)'
+                    : 'var(--danger-400)',
+                fontSize: 'var(--text-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              {pwdMessage.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+              <span>{pwdMessage.text}</span>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            variant="primary"
+            fullWidth
+            isLoading={isPwdPending}
+            disabled={isPwdPending}
+            style={{ marginTop: '0.5rem', padding: '0.85rem' }}
+            icon={<Lock size={18} />}
+          >
+            Eliminar Contraseña Anterior y Guardar Nueva
+          </Button>
+        </form>
       </div>
     </div>
   );

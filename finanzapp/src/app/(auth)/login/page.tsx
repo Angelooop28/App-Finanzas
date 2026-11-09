@@ -102,9 +102,23 @@ export default function LoginPage() {
 
           <form className={styles.authForm} onSubmit={handleSubmit} id="login-form">
             {error && (
-              <div className={styles.authError} role="alert">
-                <AlertCircle size={18} />
-                <span>{error}</span>
+              <div className={styles.authError} role="alert" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <AlertCircle size={18} />
+                  <span>{error}</span>
+                </div>
+                <Link
+                  href={email ? `/recuperar-password?email=${encodeURIComponent(email.trim())}` : '/recuperar-password'}
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    color: 'inherit',
+                    marginLeft: '1.6rem',
+                  }}
+                >
+                  ¿Olvidaste tu contraseña? Recupérala mediante código a tu correo →
+                </Link>
               </div>
             )}
 
@@ -136,7 +150,7 @@ export default function LoginPage() {
                   Contraseña
                 </label>
                 <Link
-                  href="/recuperar-password"
+                  href={email ? `/recuperar-password?email=${encodeURIComponent(email.trim())}` : '/recuperar-password'}
                   style={{
                     fontSize: 'var(--text-xs)',
                     color: 'var(--brand-navy-600)',

@@ -36,16 +36,33 @@ export const otpVerifySchema = z.object({
 });
 
 export const newPasswordSchema = z.object({
-  email: z.string().email('Correo electrónico no válido'),
-  code: z.string().length(6, 'El código debe tener 6 dígitos'),
+  email: z.string().trim().email('Correo electrónico no válido'),
+  code: z.string().trim().length(6, 'El código debe tener 6 dígitos').regex(/^\d{6}$/, 'El código debe contener solo números'),
   newPassword: z.string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Debe contener al menos una letra minúscula')
     .regex(/[0-9]/, 'Debe contener al menos un número'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: 'Las contraseñas no coinciden',
   path: ['confirmPassword'],
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Ingresa tu contraseña actual'),
+  newPassword: z.string()
+    .min(8, 'La nueva contraseña debe tener al menos 8 caracteres')
+    .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Debe contener al menos una letra minúscula')
+    .regex(/[0-9]/, 'Debe contener al menos un número'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: 'Las contraseñas nuevas no coinciden',
+  path: ['confirmPassword'],
+}).refine((data) => data.newPassword !== data.currentPassword, {
+  message: 'La nueva contraseña debe ser diferente a la anterior',
+  path: ['newPassword'],
 });
 
 // ---- Perfil / Onboarding ----
